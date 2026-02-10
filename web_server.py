@@ -8,6 +8,14 @@ from loguru import logger
 
 from bot.api.miniapp.routes import setup_routes as setup_miniapp_routes
 from bot.config.settings import settings
+from bot.handlers import start_router
+
+
+async def on_startup(bot: Bot) -> None:
+    """Установка webhook при старте приложения."""
+    webhook_url = f"https://{settings.webhook_domain.rstrip('/')}/webhook"
+    await bot.set_webhook(webhook_url, drop_pending_updates=True)
+    logger.info("Webhook set: {}", webhook_url)
 
 
 async def create_app() -> web.Application:
@@ -24,11 +32,11 @@ async def create_app() -> web.Application:
     # Mini-app HTTP API routes
     setup_miniapp_routes(app)
 
-    # Telegram webhook
+    # Telegram bot and webhook
     bot = Bot(token=settings.telegram_bot_token)
     dp = Dispatcher()
-
-    # TODO: register routers and handlers on dispatcher here.
+    dp.include_router(start_router)
+    dp.startup.register(on_startup)
 
     webhook_path = "/webhook"
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 """Common dependencies and helpers for HTTP API handlers."""
 
-from datetime import date
 import json
+from datetime import date
 from typing import NoReturn
 
 from aiohttp import web
@@ -155,4 +155,3 @@ def _json_http_error(
     payload = {"error": message, "code": code}
     body = json.dumps(payload, ensure_ascii=False)
     return exc_cls(text=body, content_type="application/json")
-

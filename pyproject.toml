@@ -46,7 +46,7 @@ ignore = [
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
-ignore = ["E501"]
+ignore = ["E501", "E402"]  # E402: allow module docstring before imports
 
 [tool.ruff.format]
 quote-style = "double"

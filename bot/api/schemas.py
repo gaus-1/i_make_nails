@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Pydantic schemas for HTTP API responses and requests."""
 
-from datetime import datetime
+from datetime import datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -109,3 +109,48 @@ class MasterAppointmentsResponse(BaseModel):
     appointments: list[MasterAppointmentOut]
 
 
+class ClientsListResponse(BaseModel):
+    """List of clients for master panel."""
+
+    clients: list[ClientOut]
+
+
+class ClientPatchIn(BaseModel):
+    """Payload for updating client (e.g. blacklist)."""
+
+    booking_allowed: bool | None = Field(None, description="Разрешить/запретить онлайн-запись.")
+
+
+class WorkScheduleItemOut(BaseModel):
+    """One work schedule line (day + time range)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    day_of_week: int  # 0=Monday ... 6=Sunday
+    time_start: time
+    time_end: time
+
+
+class MasterSettingsOut(BaseModel):
+    """Master settings for mini-app (booking on/off, timezone, work schedule)."""
+
+    booking_enabled: bool
+    timezone: str
+    work_schedule: list[WorkScheduleItemOut]
+
+
+class WorkScheduleItemIn(BaseModel):
+    """One work schedule line for PATCH."""
+
+    day_of_week: int = Field(..., ge=0, le=6)
+    time_start: time
+    time_end: time
+
+
+class MasterSettingsPatchIn(BaseModel):
+    """Payload for updating master settings."""
+
+    booking_enabled: bool | None = None
+    timezone: str | None = None
+    work_schedule: list[WorkScheduleItemIn] | None = None
