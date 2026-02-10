@@ -1,0 +1,6 @@
+{
+  "files.exclude": {
+    "**/.local": true,
+    "**/.c*": true
+  }
+}

@@ -34,7 +34,9 @@ def setup_in_memory_session(monkeypatch: pytest.MonkeyPatch) -> Session:
 
 
 @pytest.mark.asyncio
-async def test_full_client_flow_create_and_list_appointments(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_full_client_flow_create_and_list_appointments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Happy path: клиент получает услуги, слоты, создаёт запись и видит её в /appointments/my."""
     db = setup_in_memory_session(monkeypatch)
 
@@ -182,5 +184,3 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
         assert payload["appointments"][0]["service_name"] == "Комбинированный маникюр"
     finally:
         await client.close()
-
-
