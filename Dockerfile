@@ -24,4 +24,4 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-CMD ["python", "web_server.py"]
+CMD ["sh", "-c", "alembic upgrade head && exec python web_server.py"]
