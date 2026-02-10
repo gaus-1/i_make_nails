@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
@@ -34,7 +35,8 @@ async def create_app() -> web.Application:
 
 def main() -> None:
     app = asyncio.run(create_app())
-    web.run_app(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", "8000"))
+    web.run_app(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
