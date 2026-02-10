@@ -1,3 +1,5 @@
+/// <reference types="vitest" />
+
 import { screen, within } from '@testing-library/dom'
 
 import './main'
@@ -12,10 +14,9 @@ describe('mini-app shell', () => {
   })
 
   it('shows booking summary section', () => {
-    const summarySection = document.querySelector('.shell__summary')
+    const summarySection = document.querySelector<HTMLElement>('.shell__summary')
     expect(summarySection).toBeInTheDocument()
     const summaryTitle = within(summarySection!).getByText('Классический обрезной маникюр')
     expect(summaryTitle).toBeInTheDocument()
   })
 })
-
