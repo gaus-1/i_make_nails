@@ -1,8 +1,16 @@
+# Stage 1: build frontend
+FROM node:20-alpine AS frontend
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Python app + static
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install system deps if needed (kept minimal for now)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
@@ -10,6 +18,7 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+COPY --from=frontend /app/dist ./static
 
 ENV PYTHONUNBUFFERED=1
 

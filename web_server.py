@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
@@ -58,6 +59,25 @@ async def create_app() -> web.Application:
     webhook_path = "/webhook"
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
     setup_application(app, dp, bot=bot)
+
+    # Статика мини-приложения (собранный frontend из Docker)
+    static_dir = Path(__file__).resolve().parent / "static"
+    if static_dir.exists():
+        index_path = static_dir / "index.html"
+
+        async def index(_request: web.Request) -> web.StreamResponse:
+            return web.FileResponse(index_path)
+
+        app.router.add_get("/", index)
+        app.router.add_static("/assets", str(static_dir / "assets"))
+        # Иконка и прочие файлы из корня dist (например /vite.svg)
+        app.router.add_static("/", str(static_dir), name="static_root")
+    else:
+
+        async def no_static(_request: web.Request) -> web.Response:
+            return web.Response(text="Mini-app not built.", status=404)
+
+        app.router.add_get("/", no_static)
 
     return app
 
