@@ -10,3 +10,7 @@
 
 - Backend: один процесс (aiohttp + aiogram webhook), порт из `PORT`, healthcheck `/health`.
 - База: PostgreSQL (Railway managed); миграции — Alembic, при необходимости запуск при старте или отдельным шагом.
+
+## Переменные окружения (Railway)
+
+- **WEBHOOK_DOMAIN** — только хост без протокола, например: `i-make-nails.up.railway.app` (тот же домен, что у публичного URL сервиса в Railway). Не указывать `https://` и путь — они подставляются в коде.

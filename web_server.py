@@ -11,11 +11,28 @@ from bot.config.settings import settings
 from bot.handlers import start_router
 
 
+def _normalize_webhook_domain(raw: str) -> str:
+    """Убрать протокол и путь из WEBHOOK_DOMAIN, оставить только хост."""
+    s = raw.strip().rstrip("/")
+    for prefix in ("https://", "http://"):
+        if s.lower().startswith(prefix):
+            s = s[len(prefix) :].strip().rstrip("/")
+            break
+    if "/" in s:
+        s = s.split("/", 1)[0]
+    return s
+
+
 async def on_startup(bot: Bot) -> None:
     """Установка webhook при старте приложения."""
-    webhook_url = f"https://{settings.webhook_domain.rstrip('/')}/webhook"
+    host = _normalize_webhook_domain(settings.webhook_domain)
+    if not host:
+        msg = "WEBHOOK_DOMAIN пустой или неверный"
+        raise ValueError(msg)
+    webhook_url = f"https://{host}/webhook"
+    logger.info("Setting webhook: {}", webhook_url)
     await bot.set_webhook(webhook_url, drop_pending_updates=True)
-    logger.info("Webhook set: {}", webhook_url)
+    logger.info("Webhook set successfully")
 
 
 async def create_app() -> web.Application:
