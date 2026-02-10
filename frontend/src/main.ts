@@ -50,8 +50,8 @@ function normalizeApiError(text: string): string {
   if (text.trimStart().toLowerCase().startsWith('<!doctype') || text.includes('</html>'))
     return 'Сервер недоступен. Проверьте подключение.'
   try {
-    const j = JSON.parse(text)
-    return j.detail ?? j.message ?? text
+    const j = JSON.parse(text) as { error?: string; detail?: string; message?: string }
+    return j.error ?? j.detail ?? j.message ?? text
   } catch {
     return text
   }
@@ -59,11 +59,13 @@ function normalizeApiError(text: string): string {
 
 async function apiGet<T>(url: string): Promise<T> {
   const r = await fetch(url, { headers: authHeaders() })
-  if (!r.ok) {
-    const t = await r.text()
-    throw new Error(normalizeApiError(t))
+  const text = await r.text()
+  if (!r.ok) throw new Error(normalizeApiError(text))
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(normalizeApiError(text))
   }
-  return r.json() as Promise<T>
 }
 
 async function apiPost<T>(url: string, body?: object): Promise<T> {
@@ -72,11 +74,13 @@ async function apiPost<T>(url: string, body?: object): Promise<T> {
     headers: authHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!r.ok) {
-    const t = await r.text()
-    throw new Error(normalizeApiError(t))
+  const text = await r.text()
+  if (!r.ok) throw new Error(normalizeApiError(text))
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(normalizeApiError(text))
   }
-  return r.json() as Promise<T>
 }
 
 const MONTHS_RU = [
@@ -183,7 +187,7 @@ const state = {
   loading: false,
   error: null as string | null,
   success: null as string | null,
-  weekStart: new Date(),
+  calendarMonth: new Date(),
   myPeriod: 'week' as 'day' | 'week' | 'month',
   myPeriodAnchor: new Date(),
 }
@@ -493,38 +497,40 @@ function render() {
       hint.textContent = 'Сначала выберите услугу.'
       calendarWrap.appendChild(hint)
     } else {
-      const weekStart = getWeekStart(state.weekStart)
+      const calMonth = state.calendarMonth
+      const y = calMonth.getFullYear()
+      const m = calMonth.getMonth()
+      const firstDay = new Date(y, m, 1)
+      const monFirst = (firstDay.getDay() + 6) % 7
+      const daysInMonth = new Date(y, m + 1, 0).getDate()
+      const totalCells = 42
       const headerCal = document.createElement('div')
       headerCal.className = 'shell__calendar-header'
       const monthLabel = document.createElement('span')
-      monthLabel.textContent = weekStart.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+      monthLabel.textContent = firstDay.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
       const nav = document.createElement('div')
       nav.className = 'shell__calendar-nav'
       const prevBtn = document.createElement('button')
       prevBtn.type = 'button'
-      prevBtn.setAttribute('aria-label', 'Предыдущая неделя')
+      prevBtn.setAttribute('aria-label', 'Предыдущий месяц')
       prevBtn.textContent = '‹'
       prevBtn.addEventListener('click', () => {
-        state.weekStart = addDays(weekStart, -7)
+        state.calendarMonth = new Date(y, m - 1, 1)
         state.selectedDate = null
         state.slots = []
         state.selectedSlotUtc = null
         render()
-        if (state.selectedServiceId)
-          loadSlots(toYYYYMMDD(getWeekStart(state.weekStart)), state.selectedServiceId)
       })
       const nextBtn = document.createElement('button')
       nextBtn.type = 'button'
-      nextBtn.setAttribute('aria-label', 'Следующая неделя')
+      nextBtn.setAttribute('aria-label', 'Следующий месяц')
       nextBtn.textContent = '›'
       nextBtn.addEventListener('click', () => {
-        state.weekStart = addDays(weekStart, 7)
+        state.calendarMonth = new Date(y, m + 1, 1)
         state.selectedDate = null
         state.slots = []
         state.selectedSlotUtc = null
         render()
-        if (state.selectedServiceId)
-          loadSlots(toYYYYMMDD(getWeekStart(state.weekStart)), state.selectedServiceId)
       })
       nav.appendChild(prevBtn)
       nav.appendChild(nextBtn)
@@ -532,25 +538,48 @@ function render() {
       headerCal.appendChild(nav)
       calendarWrap.appendChild(headerCal)
 
-      const daysRow = document.createElement('div')
-      daysRow.className = 'shell__days-row'
-      for (let i = 0; i < 7; i++) {
-        const dayDate = addDays(weekStart, i)
-        const dateStr = toYYYYMMDD(dayDate)
-        const dayBtn = document.createElement('button')
-        dayBtn.className = 'shell__day' + (state.selectedDate === dateStr ? ' shell__day--active' : '')
-        dayBtn.type = 'button'
-        dayBtn.dataset.date = dateStr
-        dayBtn.innerHTML = `<span class="shell__day-num">${dayDate.getDate()}</span><span class="shell__day-wd">${dayDate.toLocaleDateString('ru-RU', { weekday: 'short' })}</span>`
-        dayBtn.addEventListener('click', () => {
+      const weekdaysRow = document.createElement('div')
+      weekdaysRow.className = 'shell__cal-weekdays'
+      for (const wd of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']) {
+        const cell = document.createElement('span')
+        cell.className = 'shell__cal-weekday'
+        cell.textContent = wd
+        weekdaysRow.appendChild(cell)
+      }
+      calendarWrap.appendChild(weekdaysRow)
+
+      const grid = document.createElement('div')
+      grid.className = 'shell__cal-grid'
+      for (let i = 0; i < totalCells; i++) {
+        let cellDate: Date
+        let isOtherMonth: boolean
+        if (i < monFirst) {
+          cellDate = new Date(y, m, 1 - (monFirst - i))
+          isOtherMonth = true
+        } else if (i < monFirst + daysInMonth) {
+          cellDate = new Date(y, m, i - monFirst + 1)
+          isOtherMonth = false
+        } else {
+          cellDate = new Date(y, m + 1, i - monFirst - daysInMonth + 1)
+          isOtherMonth = true
+        }
+        const dateStr = toYYYYMMDD(cellDate)
+        const cell = document.createElement('button')
+        cell.type = 'button'
+        cell.className = 'shell__cal-cell'
+        if (isOtherMonth) cell.classList.add('shell__cal-cell--other')
+        if (state.selectedDate === dateStr) cell.classList.add('shell__cal-cell--active')
+        cell.textContent = String(cellDate.getDate())
+        cell.dataset.date = dateStr
+        cell.addEventListener('click', () => {
           state.selectedDate = dateStr
           state.selectedSlotUtc = null
           render()
           if (state.selectedServiceId) loadSlots(dateStr, state.selectedServiceId)
         })
-        daysRow.appendChild(dayBtn)
+        grid.appendChild(cell)
       }
-      calendarWrap.appendChild(daysRow)
+      calendarWrap.appendChild(grid)
 
       if (state.selectedDate) {
         if (state.loading) {
@@ -696,6 +725,5 @@ async function loadMyAppointments() {
   render()
 }
 
-state.weekStart = getWeekStart(new Date())
 render()
 loadServices()

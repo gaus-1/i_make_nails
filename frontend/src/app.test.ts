@@ -18,4 +18,10 @@ describe('mini-app shell', () => {
     expect(summarySection!.querySelector('.shell__summary-title')).toBeInTheDocument()
     expect(within(summarySection!).getByRole('button', { name: /подтвердить запись/i })).toBeInTheDocument()
   })
+
+  it('shows date/time section with hint when no service selected', () => {
+    expect(screen.getByText('Дата и время')).toBeInTheDocument()
+    expect(screen.getByText(/Свободные окошки из расписания/)).toBeInTheDocument()
+    expect(screen.getByText('Сначала выберите услугу.')).toBeInTheDocument()
+  })
 })
