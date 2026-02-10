@@ -26,4 +26,3 @@ from bot.models.service import Service  # noqa: E402  # isort: skip
 from bot.models.appointment import Appointment  # noqa: E402  # isort: skip
 from bot.models.blocked_slot import BlockedSlot  # noqa: E402  # isort: skip
 from bot.models.work_schedule import WorkSchedule  # noqa: E402  # isort: skip
-

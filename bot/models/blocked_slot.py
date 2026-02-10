@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, String, Text
+from sqlalchemy import Date, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.models.base import Base, TimestampMixin
@@ -22,4 +22,3 @@ class BlockedSlot(TimestampMixin, Base):
 
 
 from bot.models.master import Master  # noqa: E402  # isort: skip
-

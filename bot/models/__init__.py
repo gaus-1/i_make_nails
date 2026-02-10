@@ -1,5 +1,5 @@
-from bot.models.base import Base
 from bot.models.appointment import Appointment
+from bot.models.base import Base
 from bot.models.blocked_slot import BlockedSlot
 from bot.models.client import Client
 from bot.models.master import Master
@@ -15,4 +15,3 @@ __all__ = [
     "Service",
     "WorkSchedule",
 ]
-

@@ -26,4 +26,3 @@ class Client(TimestampMixin, Base):
 
 from bot.models.master import Master  # noqa: E402  # isort: skip
 from bot.models.appointment import Appointment  # noqa: E402  # isort: skip
-
