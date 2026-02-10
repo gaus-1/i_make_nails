@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -60,11 +60,13 @@ class AppointmentService:
             raise ValueError(msg)
 
         if datetime_start_utc.tzinfo is None:
-            datetime_start_utc = datetime_start_utc.replace(tzinfo=timezone.utc)
+            datetime_start_utc = datetime_start_utc.replace(tzinfo=UTC)
 
         datetime_end_utc = datetime_start_utc + timedelta(minutes=service.duration_minutes)
 
-        self._check_slot_free(master_id=master.id, start_utc=datetime_start_utc, end_utc=datetime_end_utc)
+        self._check_slot_free(
+            master_id=master.id, start_utc=datetime_start_utc, end_utc=datetime_end_utc
+        )
 
         appointment = Appointment(
             master_id=master.id,
@@ -92,7 +94,7 @@ class AppointmentService:
             raise AppointmentNotFoundError(f"Appointment {appointment_id} not found.")
 
         if new_datetime_start_utc.tzinfo is None:
-            new_datetime_start_utc = new_datetime_start_utc.replace(tzinfo=timezone.utc)
+            new_datetime_start_utc = new_datetime_start_utc.replace(tzinfo=UTC)
 
         new_end_utc = new_datetime_start_utc + (
             appointment.datetime_end - appointment.datetime_start
@@ -113,4 +115,3 @@ class AppointmentService:
         self.db.commit()
         self.db.refresh(appointment)
         return appointment
-

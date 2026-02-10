@@ -4,4 +4,3 @@ class SlotBusyError(Exception):
 
 class AppointmentNotFoundError(Exception):
     """Raised when an appointment with the given id does not exist."""
-

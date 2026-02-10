@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, select
@@ -68,7 +68,10 @@ class ScheduleService:
         stmt = select(Appointment).where(
             Appointment.master_id == master_id,
             Appointment.status == "confirmed",
-            and_(Appointment.datetime_start >= day_start_utc, Appointment.datetime_start < day_end_utc),
+            and_(
+                Appointment.datetime_start >= day_start_utc,
+                Appointment.datetime_start < day_end_utc,
+            ),
         )
         appointments = self.db.execute(stmt).scalars().all()
 
@@ -77,18 +80,17 @@ class ScheduleService:
             start = appointment.datetime_start
             end = appointment.datetime_end
             if start.tzinfo is None:
-                start = start.replace(tzinfo=timezone.utc)
+                start = start.replace(tzinfo=UTC)
             if end.tzinfo is None:
-                end = end.replace(tzinfo=timezone.utc)
+                end = end.replace(tzinfo=UTC)
             intervals.append((start, end))
         return intervals
 
     @staticmethod
-    def _overlaps(start: datetime, end: datetime, intervals: list[tuple[datetime, datetime]]) -> bool:
-        for s, e in intervals:
-            if start < e and end > s:
-                return True
-        return False
+    def _overlaps(
+        start: datetime, end: datetime, intervals: list[tuple[datetime, datetime]]
+    ) -> bool:
+        return any(start < e and end > s for s, e in intervals)
 
     def get_free_slots_for_date(
         self,
@@ -116,8 +118,8 @@ class ScheduleService:
 
         day_start_local = datetime.combine(target_date, time(0, 0), tzinfo=tz)
         day_end_local = day_start_local + timedelta(days=1)
-        day_start_utc = day_start_local.astimezone(timezone.utc)
-        day_end_utc = day_end_local.astimezone(timezone.utc)
+        day_start_utc = day_start_local.astimezone(UTC)
+        day_end_utc = day_end_local.astimezone(UTC)
 
         busy_intervals_utc = self._get_confirmed_appointments(
             master_id=master_id,
@@ -131,11 +133,10 @@ class ScheduleService:
         for start_local, end_local in intervals_local:
             current = start_local
             while current + step <= end_local:
-                slot_start_utc = current.astimezone(timezone.utc)
+                slot_start_utc = current.astimezone(UTC)
                 slot_end_utc = slot_start_utc + step
                 if not self._overlaps(slot_start_utc, slot_end_utc, busy_intervals_utc):
                     result_slots.append(slot_start_utc)
                 current += step
 
         return DailySlots(date=target_date, slots_utc=result_slots)
-

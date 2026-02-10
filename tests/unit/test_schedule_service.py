@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, time, timedelta
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -37,7 +37,9 @@ def test_get_free_slots_without_appointments() -> None:
 
     svc = ScheduleService(db)
     target = date(2026, 2, 9)  # Monday
-    result = svc.get_free_slots_for_date(master_id=master.id, target_date=target, duration_minutes=60)
+    result = svc.get_free_slots_for_date(
+        master_id=master.id, target_date=target, duration_minutes=60
+    )
 
     assert result.date == target
     # 10-11, 11-12, 12-13, 13-14
@@ -74,9 +76,10 @@ def test_get_free_slots_excludes_existing_appointments() -> None:
     db.add(appt)
     db.commit()
 
-    result = svc.get_free_slots_for_date(master_id=master.id, target_date=target, duration_minutes=60)
+    result = svc.get_free_slots_for_date(
+        master_id=master.id, target_date=target, duration_minutes=60
+    )
 
     # всего четыре слота, один занят -> остаётся три
     assert len(result.slots_utc) == 3
     assert busy_slot_start not in result.slots_utc
-

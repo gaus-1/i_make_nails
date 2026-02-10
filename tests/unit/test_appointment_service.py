@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -41,7 +41,7 @@ def test_create_appointment_and_prevent_overlap() -> None:
     client_id = client.id
 
     svc = AppointmentService(db)
-    start1 = datetime(2026, 2, 10, 9, 0, tzinfo=timezone.utc)
+    start1 = datetime(2026, 2, 10, 9, 0, tzinfo=UTC)
     appt1 = svc.create(
         master_id=master_id,
         client_id=client_id,
@@ -53,7 +53,7 @@ def test_create_appointment_and_prevent_overlap() -> None:
     assert appt1.datetime_end - appt1.datetime_start == timedelta(minutes=60)
 
     # overlapping appointment must fail
-    start_overlap = datetime(2026, 2, 10, 9, 30, tzinfo=timezone.utc)
+    start_overlap = datetime(2026, 2, 10, 9, 30, tzinfo=UTC)
     try:
         svc.create(
             master_id=master_id,
@@ -67,7 +67,7 @@ def test_create_appointment_and_prevent_overlap() -> None:
         raise AssertionError("Expected SlotBusyError for overlapping appointment")
 
     # adjacent appointment must succeed
-    start2 = datetime(2026, 2, 10, 10, 0, tzinfo=timezone.utc)
+    start2 = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
     appt2 = svc.create(
         master_id=master_id,
         client_id=client_id,
@@ -79,4 +79,3 @@ def test_create_appointment_and_prevent_overlap() -> None:
     # ensure we really have two appointments in db
     all_appointments = db.query(Appointment).all()
     assert len(all_appointments) == 2
-

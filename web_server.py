@@ -6,6 +6,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from aiohttp import web
 from loguru import logger
 
+from bot.api.miniapp.routes import setup_routes as setup_miniapp_routes
 from bot.config.settings import settings
 
 
@@ -19,6 +20,9 @@ async def create_app() -> web.Application:
         return web.Response(text="ok")
 
     app.router.add_get("/health", health)
+
+    # Mini-app HTTP API routes
+    setup_miniapp_routes(app)
 
     # Telegram webhook
     bot = Bot(token=settings.telegram_bot_token)
