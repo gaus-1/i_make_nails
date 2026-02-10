@@ -15,9 +15,20 @@ Telegram-бот и мини-приложение для записи к маст
 - Pydantic / pydantic-settings для конфигурации
 - Ruff + pre-commit для качества кода
 
-## Локальный запуск (будет дополняться)
+## Деплой (Railway)
 
-> Деплой: Railway (Dockerfile).
+Деплой **только через Railway CLI** (автодеплой по пушу в GitHub не настроен):
+
+```bash
+npm i -g @railway/cli
+railway login
+railway link   # выбрать проект "i make nails" и сервис
+railway up --detach
+```
+
+Сборка по `Dockerfile` в корне. Root Directory в настройках сервиса должен быть `/`.
+
+## Локальный запуск (будет дополняться)
 
 ```bash
 python -m venv .venv

@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from bot.config.settings import settings
 
-engine = create_engine(settings.database_url, pool_pre_ping=True)
+# Use psycopg (v3) driver; Railway DATABASE_URL is often postgresql://
+_db_url = settings.database_url
+if _db_url.startswith("postgresql://") and "+psycopg" not in _db_url:
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+engine = create_engine(_db_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 

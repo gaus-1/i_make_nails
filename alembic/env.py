@@ -16,10 +16,18 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _normalize_pg_url(url: str) -> str:
+    """Use psycopg (v3) driver for postgresql:// URLs."""
+    if url.startswith("postgresql://") and "+psycopg" not in url:
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
 def run_migrations_offline() -> None:
     url = os.environ.get("DATABASE_URL")
     if not url:
         raise RuntimeError("DATABASE_URL is required for offline migrations")
+    url = _normalize_pg_url(url)
 
     context.configure(
         url=url,
@@ -37,7 +45,7 @@ def run_migrations_online() -> None:
     url = os.environ.get("DATABASE_URL")
     if not url:
         raise RuntimeError("DATABASE_URL is required for online migrations")
-    section["sqlalchemy.url"] = url
+    section["sqlalchemy.url"] = _normalize_pg_url(url)
 
     connectable = engine_from_config(
         section,
