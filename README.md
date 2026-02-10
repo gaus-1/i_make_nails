@@ -17,6 +17,8 @@ Telegram-бот и мини-приложение для записи к маст
 
 ## Локальный запуск (будет дополняться)
 
+> Деплой: Railway (Dockerfile).
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
