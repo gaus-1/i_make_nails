@@ -5,6 +5,6 @@
     "releaseCommand": "alembic upgrade head",
     "startCommand": "alembic upgrade head && python web_server.py",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 100
+    "healthcheckTimeout": 300
   }
 }
