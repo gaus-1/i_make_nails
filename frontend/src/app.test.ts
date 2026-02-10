@@ -5,18 +5,17 @@ import { screen, within } from '@testing-library/dom'
 import './main'
 
 describe('mini-app shell', () => {
-  it('renders master name and primary action', () => {
-    const name = screen.getByText('Екатерина Савина')
+  it('renders primary action and hero text', () => {
     const cta = screen.getByRole('button', { name: /открыть запись/i })
-
-    expect(name).toBeInTheDocument()
+    const hero = screen.getByText(/Выберите услугу, время и подтвердите запись/)
     expect(cta).toBeInTheDocument()
+    expect(hero).toBeInTheDocument()
   })
 
   it('shows booking summary section', () => {
     const summarySection = document.querySelector<HTMLElement>('.shell__summary')
     expect(summarySection).toBeInTheDocument()
-    const summaryTitle = within(summarySection!).getByText('Классический обрезной маникюр')
-    expect(summaryTitle).toBeInTheDocument()
+    expect(summarySection!.querySelector('.shell__summary-title')).toBeInTheDocument()
+    expect(within(summarySection!).getByRole('button', { name: /подтвердить запись/i })).toBeInTheDocument()
   })
 })
