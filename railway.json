@@ -3,7 +3,7 @@
   "deploy": {
     "numReplicas": 1,
     "releaseCommand": "alembic upgrade head",
-    "startCommand": "python web_server.py",
+    "startCommand": "alembic upgrade head && python web_server.py",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100
   }

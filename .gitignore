@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 dev.db
+.env
 logs/
 
 # Локальные скрытые каталоги и конфиги (не коммитить)

@@ -130,6 +130,12 @@ def resolve_telegram_role(telegram_id: int) -> str | None:
     return None
 
 
+def is_master_telegram_id(telegram_id: int) -> bool:
+    """True if telegram_id is in MASTER_TELEGRAM_IDS. Used in bot to show «Панель мастера» only to the master (admin-only users do not see it)."""
+    master_ids = _parse_id_list(settings.master_telegram_ids)
+    return telegram_id in master_ids
+
+
 def require_master(db: Session, request: web.Request) -> int:
     """Ensure that current telegram user is a master/admin and return master id.
 
