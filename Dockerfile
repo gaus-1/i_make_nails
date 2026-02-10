@@ -21,6 +21,7 @@ COPY . .
 COPY --from=frontend /app/dist ./static
 
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
