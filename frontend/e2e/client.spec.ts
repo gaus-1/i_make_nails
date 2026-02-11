@@ -61,10 +61,10 @@ test.describe('Клиент', () => {
     await expect(page.getByRole('button', { name: 'Неделя' })).toHaveClass(/shell__period-tab--active/)
   })
 
-  test('в форме записи есть поле Телефон', async ({ page }) => {
+  test('форма записи: услуга и дата/время без поля телефона', async ({ page }) => {
     await page.getByRole('button', { name: 'Записаться' }).click()
     await expect(page.getByRole('heading', { name: 'Услуга' })).toBeVisible({ timeout: 5000 })
-    await expect(page.getByText('Телефон (необязательно)')).toBeVisible({ timeout: 3000 })
-    await expect(page.locator('input[type="tel"]')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('input[type="tel"]')).not.toBeVisible()
   })
 })

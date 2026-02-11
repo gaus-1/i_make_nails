@@ -423,24 +423,6 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   layout.appendChild(sectionSlot)
   main.appendChild(layout)
 
-  const phoneWrap = document.createElement('div')
-  phoneWrap.className = 'shell__card shell__section'
-  const phoneLabel = document.createElement('label')
-  phoneLabel.className = 'shell__section-caption'
-  phoneLabel.textContent = 'Телефон (необязательно)'
-  const phoneInput = document.createElement('input')
-  phoneInput.type = 'tel'
-  phoneInput.className = 'shell__input shell__input--tel'
-  phoneInput.placeholder = '+7 900 123-45-67'
-  phoneInput.value = state.bookingPhone
-  phoneInput.addEventListener('input', () => {
-    state.bookingPhone = phoneInput.value
-    scheduleRender()
-  })
-  phoneWrap.appendChild(phoneLabel)
-  phoneWrap.appendChild(phoneInput)
-  main.appendChild(phoneWrap)
-
   const summary = document.createElement('section')
   summary.className = 'shell__card shell__summary'
   const serviceName =
@@ -494,12 +476,11 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         await apiPost(API.createAppointment, {
           telegram_id: user.id,
           name: user.name,
-          phone: state.bookingPhone.trim() || null,
+          phone: null,
           service_id: state.selectedServiceId,
           slot_start_utc: state.selectedSlotUtc,
         })
         state.success = 'Запись создана. Ждём вас!'
-        state.bookingPhone = ''
         state.selectedSlotUtc = null
         state.slots = []
         state.selectedDate = null
@@ -525,8 +506,7 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   hero.className = 'shell__card shell__hero'
   const heroP = document.createElement('p')
   heroP.className = 'shell__subtitle'
-  heroP.textContent =
-    'Выберите услугу, время и подтвердите запись. Напоминания приходят за 24 ч и за 2 ч — в любое время суток.'
+  heroP.textContent = 'Выберите услугу, время и подтвердите запись.'
   hero.appendChild(heroP)
   main.appendChild(hero)
 
@@ -560,10 +540,14 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   const messagesZone = document.createElement('div')
   messagesZone.className = 'shell__messages'
   if (state.error) {
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.error
-    messagesZone.appendChild(err)
+    const isTelegramIdError =
+      state.error.includes('Telegram id is required') || state.error.includes('X-Telegram-Id')
+    if (!isTelegramIdError) {
+      const err = document.createElement('p')
+      err.className = 'shell__error'
+      err.textContent = state.error
+      messagesZone.appendChild(err)
+    }
   }
   if (state.success) {
     const ok = document.createElement('p')
