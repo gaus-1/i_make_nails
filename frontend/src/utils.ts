@@ -12,10 +12,14 @@ export function formatSlotTime(iso: string): string {
   return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
+/** Формат даты для отображения (YYYY-MM-DD трактуется как локальная дата). */
 export function formatDateLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'Z')
-  const day = d.getUTCDate()
-  const month = MONTHS_RU[d.getUTCMonth()]
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr)
+  const d = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(dateStr + 'Z')
+  const day = d.getDate()
+  const month = MONTHS_RU[d.getMonth()]
   const weekday = d.toLocaleDateString('ru-RU', { weekday: 'short' })
   return `${day} ${month}, ${weekday}`
 }

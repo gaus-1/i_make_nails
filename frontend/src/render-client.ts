@@ -24,13 +24,16 @@ export async function loadSlots(dateStr: string, scheduleRender: () => void): Pr
   scheduleRender()
   try {
     const data = await apiGet<{ date: string; slots: Slot[] }>(API.slots(dateStr))
+    if (state.selectedDate !== dateStr) return
     state.slots = data.slots
   } catch (e) {
+    if (state.selectedDate !== dateStr) return
     state.slots = []
     state.error = e instanceof Error ? e.message : String(e)
+  } finally {
+    state.loading = false
+    scheduleRender()
   }
-  state.loading = false
-  scheduleRender()
 }
 
 export async function loadMyAppointments(scheduleRender: () => void): Promise<void> {
@@ -213,13 +216,6 @@ function renderMyAppointments(main: HTMLElement, scheduleRender: () => void): vo
 }
 
 function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
-  const user = getTelegramUser()
-  if (!user) {
-    const hint = document.createElement('p')
-    hint.className = 'shell__section-caption shell__caption-block'
-    hint.textContent = 'Для записи откройте приложение в Telegram.'
-    main.appendChild(hint)
-  }
   const layout = document.createElement('section')
   layout.className = 'shell__layout'
 
@@ -444,10 +440,16 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
 
   const tabs = document.createElement('section')
   tabs.className = 'shell__tabs'
+  tabs.setAttribute('role', 'tablist')
+  tabs.setAttribute('aria-label', 'Разделы')
   const tabBook = document.createElement('button')
   tabBook.className = 'shell__tab' + (state.view === 'booking' ? ' shell__tab--active' : '')
   tabBook.type = 'button'
   tabBook.textContent = 'Записаться'
+  tabBook.setAttribute('role', 'tab')
+  tabBook.setAttribute('aria-selected', String(state.view === 'booking'))
+  tabBook.id = 'client-tab-booking'
+  tabBook.setAttribute('aria-controls', 'client-panel-booking')
   tabBook.addEventListener('click', () => {
     state.view = 'booking'
     state.error = null
@@ -458,6 +460,10 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   tabMy.className = 'shell__tab' + (state.view === 'my' ? ' shell__tab--active' : '')
   tabMy.type = 'button'
   tabMy.textContent = 'Мои записи'
+  tabMy.setAttribute('role', 'tab')
+  tabMy.setAttribute('aria-selected', String(state.view === 'my'))
+  tabMy.id = 'client-tab-my'
+  tabMy.setAttribute('aria-controls', 'client-panel-my')
   tabMy.addEventListener('click', async () => {
     state.view = 'my'
     state.error = null
@@ -471,6 +477,8 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
 
   const messagesZone = document.createElement('div')
   messagesZone.className = 'shell__messages'
+  messagesZone.setAttribute('aria-live', 'polite')
+  messagesZone.setAttribute('aria-atomic', 'true')
   if (state.error) {
     const isTelegramIdError =
       state.error.includes('Telegram id is required') || state.error.includes('X-Telegram-Id')
@@ -489,11 +497,17 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   }
   main.appendChild(messagesZone)
 
+  const panel = document.createElement('div')
+  panel.className = 'shell__tabpanel'
+  panel.setAttribute('role', 'tabpanel')
+  panel.id = state.view === 'my' ? 'client-panel-my' : 'client-panel-booking'
+  panel.setAttribute('aria-labelledby', state.view === 'my' ? 'client-tab-my' : 'client-tab-booking')
   if (state.view === 'my') {
-    renderMyAppointments(main, scheduleRender)
+    renderMyAppointments(panel, scheduleRender)
   } else {
-    renderBooking(main, scheduleRender)
+    renderBooking(panel, scheduleRender)
   }
+  main.appendChild(panel)
 
   shell.appendChild(main)
 }

@@ -1,6 +1,6 @@
 /** Рендер панели мастера: расписание, клиенты, настройки. */
 
-import { API, apiGet, authHeaders } from './api'
+import { API, apiGet, authHeaders, normalizeApiError } from './api'
 import {
   state,
   type BlockedSlotItem,
@@ -9,6 +9,7 @@ import {
   type MasterSettings,
   type WorkScheduleItem,
 } from './state'
+import { toYYYYMMDD } from './utils'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 const TIMEZONES = [
@@ -18,79 +19,94 @@ const TIMEZONES = [
   'Asia/Novosibirsk',
 ]
 
-async function loadMasterAppointments(scheduleRender: () => void): Promise<void> {
+/** Обёртка: выставляет masterLoading и перерисовывает до и после загрузки. */
+async function withMasterLoading(
+  scheduleRender: () => void,
+  fn: () => Promise<void>
+): Promise<void> {
   state.masterLoading = true
   state.masterError = null
   scheduleRender()
   try {
-    const data = await apiGet<{ date: string; appointments: MasterAppointment[] }>(
-      API.masterAppointments(state.masterScheduleDate)
-    )
-    state.masterAppointments = data.appointments
-  } catch (e) {
-    state.masterAppointments = []
-    state.masterError = e instanceof Error ? e.message : String(e)
+    await fn()
+  } finally {
+    state.masterLoading = false
+    scheduleRender()
   }
-  state.masterLoading = false
-  scheduleRender()
+}
+
+async function loadMasterAppointments(scheduleRender: () => void): Promise<void> {
+  await withMasterLoading(scheduleRender, async () => {
+    const tab = state.masterTab
+    try {
+      const data = await apiGet<{ date: string; appointments: MasterAppointment[] }>(
+        API.masterAppointments(state.masterScheduleDate)
+      )
+      if (state.masterTab !== tab) return
+      state.masterAppointments = data.appointments
+    } catch (e) {
+      if (state.masterTab !== tab) return
+      state.masterAppointments = []
+      state.masterError = e instanceof Error ? e.message : String(e)
+    }
+  })
 }
 
 async function loadMasterClients(scheduleRender: () => void): Promise<void> {
-  state.masterLoading = true
-  state.masterError = null
-  scheduleRender()
-  try {
-    const data = await apiGet<{ clients: MasterClient[] }>(API.masterClients)
-    state.masterClients = data.clients
-  } catch (e) {
-    state.masterClients = []
-    state.masterError = e instanceof Error ? e.message : String(e)
-  }
-  state.masterLoading = false
-  scheduleRender()
+  await withMasterLoading(scheduleRender, async () => {
+    const tab = state.masterTab
+    try {
+      const data = await apiGet<{ clients: MasterClient[] }>(API.masterClients)
+      if (state.masterTab !== tab) return
+      state.masterClients = data.clients
+    } catch (e) {
+      if (state.masterTab !== tab) return
+      state.masterClients = []
+      state.masterError = e instanceof Error ? e.message : String(e)
+    }
+  })
 }
 
 async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
-  state.masterLoading = true
-  state.masterError = null
-  scheduleRender()
-  try {
-    const data = await apiGet<MasterSettings>(API.masterSettings)
-    state.masterSettings = data
-  } catch (e) {
-    state.masterSettings = null
-    state.masterError = e instanceof Error ? e.message : String(e)
-  }
-  state.masterLoading = false
-  scheduleRender()
+  await withMasterLoading(scheduleRender, async () => {
+    const tab = state.masterTab
+    try {
+      const data = await apiGet<MasterSettings>(API.masterSettings)
+      if (state.masterTab !== tab) return
+      state.masterSettings = data
+    } catch (e) {
+      if (state.masterTab !== tab) return
+      state.masterSettings = null
+      state.masterError = e instanceof Error ? e.message : String(e)
+    }
+  })
 }
 
 function getMonthRange(): { from: string; to: string } {
   const d = new Date()
   const y = d.getFullYear()
   const m = d.getMonth()
-  const from = `${y}-${String(m + 1).padStart(2, '0')}-01`
-  const lastDay = new Date(y, m + 1, 0).getDate()
-  const to = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  const from = toYYYYMMDD(new Date(y, m, 1))
+  const to = toYYYYMMDD(new Date(y, m + 1, 0))
   return { from, to }
 }
 
 async function loadMasterBlockedSlots(scheduleRender: () => void): Promise<void> {
-  state.masterLoading = true
-  state.masterError = null
-  scheduleRender()
-  try {
-    const { from, to } = getMonthRange()
-    const data = await apiGet<{ blocked_slots: BlockedSlotItem[] }>(
-      API.masterBlockedSlots(from, to)
-    )
-    state.masterBlockedSlots = data.blocked_slots
-  } catch (e) {
-    state.masterBlockedSlots = []
-    state.masterError = e instanceof Error ? e.message : String(e)
-  }
-  state.masterLoading = false
-  scheduleRender()
+  await withMasterLoading(scheduleRender, async () => {
+    const tab = state.masterTab
+    try {
+      const { from, to } = getMonthRange()
+      const data = await apiGet<{ blocked_slots: BlockedSlotItem[] }>(
+        API.masterBlockedSlots(from, to)
+      )
+      if (state.masterTab !== tab) return
+      state.masterBlockedSlots = data.blocked_slots
+    } catch (e) {
+      if (state.masterTab !== tab) return
+      state.masterBlockedSlots = []
+      state.masterError = e instanceof Error ? e.message : String(e)
+    }
+  })
 }
 
 async function createBlockedSlot(
@@ -112,7 +128,7 @@ async function createBlockedSlot(
       body: JSON.stringify(body),
     })
     const text = await r.text()
-    if (!r.ok) throw new Error(JSON.parse(text)?.error ?? text)
+    if (!r.ok) throw new Error(normalizeApiError(text))
     state.masterError = null
     await loadMasterBlockedSlots(scheduleRender)
     onSuccess?.()
@@ -125,7 +141,8 @@ async function createBlockedSlot(
 async function deleteBlockedSlot(id: number, scheduleRender: () => void): Promise<void> {
   try {
     const r = await fetch(API.masterBlockedSlot(id), { method: 'DELETE', headers: authHeaders() })
-    if (!r.ok) throw new Error((await r.json())?.error ?? 'Ошибка удаления')
+    const text = await r.text()
+    if (!r.ok) throw new Error(normalizeApiError(text))
     state.masterBlockedSlots = state.masterBlockedSlots.filter((b) => b.id !== id)
     state.masterError = null
   } catch (e) {
@@ -157,10 +174,14 @@ async function patchClientBookingAllowed(
       body: JSON.stringify({ booking_allowed: bookingAllowed }),
     })
     const text = await r.text()
-    if (!r.ok) throw new Error(JSON.parse(text)?.error ?? text)
-    const updated = JSON.parse(text) as MasterClient
-    const idx = state.masterClients.findIndex((c) => c.id === clientId)
-    if (idx >= 0) state.masterClients[idx] = updated
+    if (!r.ok) throw new Error(normalizeApiError(text))
+    try {
+      const updated = JSON.parse(text) as MasterClient
+      const idx = state.masterClients.findIndex((c) => c.id === clientId)
+      if (idx >= 0) state.masterClients[idx] = updated
+    } catch {
+      state.masterError = normalizeApiError(text)
+    }
   } catch (e) {
     state.masterError = e instanceof Error ? e.message : String(e)
   }
@@ -178,9 +199,13 @@ async function patchMasterSettings(
       body: JSON.stringify(payload),
     })
     const text = await r.text()
-    if (!r.ok) throw new Error(JSON.parse(text)?.error ?? text)
-    state.masterSettings = JSON.parse(text) as MasterSettings
-    state.masterError = null
+    if (!r.ok) throw new Error(normalizeApiError(text))
+    try {
+      state.masterSettings = JSON.parse(text) as MasterSettings
+      state.masterError = null
+    } catch {
+      state.masterError = normalizeApiError(text)
+    }
   } catch (e) {
     state.masterError = e instanceof Error ? e.message : String(e)
   }
@@ -467,6 +492,8 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
 
   const tabs = document.createElement('div')
   tabs.className = 'shell__period-tabs shell__period-tabs--master'
+  tabs.setAttribute('role', 'tablist')
+  tabs.setAttribute('aria-label', 'Разделы панели мастера')
   const tabsData: { key: 'schedule' | 'clients' | 'settings' | 'blocked'; label: string }[] = [
     { key: 'schedule', label: 'Расписание' },
     { key: 'clients', label: 'Клиенты' },
@@ -478,6 +505,10 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
     btn.className = 'shell__period-tab' + (state.masterTab === t.key ? ' shell__period-tab--active' : '')
     btn.type = 'button'
     btn.textContent = t.label
+    btn.setAttribute('role', 'tab')
+    btn.setAttribute('aria-selected', String(state.masterTab === t.key))
+    btn.id = `master-tab-${t.key}`
+    btn.setAttribute('aria-controls', `master-panel-${t.key}`)
     btn.addEventListener('click', async () => {
       state.masterTab = t.key
       state.masterError = null
@@ -493,6 +524,8 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
 
   const messagesZone = document.createElement('div')
   messagesZone.className = 'shell__messages'
+  messagesZone.setAttribute('aria-live', 'polite')
+  messagesZone.setAttribute('aria-atomic', 'true')
   if (state.masterError) {
     const err = document.createElement('p')
     err.className = 'shell__error'
@@ -501,10 +534,16 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
   }
   main.appendChild(messagesZone)
 
-  if (state.masterTab === 'schedule') renderScheduleTab(main, scheduleRender)
-  else if (state.masterTab === 'clients') renderClientsTab(main, scheduleRender)
-  else if (state.masterTab === 'settings') renderSettingsTab(main, scheduleRender)
-  else renderBlockedTab(main, scheduleRender)
+  const panel = document.createElement('div')
+  panel.className = 'shell__tabpanel'
+  panel.setAttribute('role', 'tabpanel')
+  panel.id = `master-panel-${state.masterTab}`
+  panel.setAttribute('aria-labelledby', `master-tab-${state.masterTab}`)
+  if (state.masterTab === 'schedule') renderScheduleTab(panel, scheduleRender)
+  else if (state.masterTab === 'clients') renderClientsTab(panel, scheduleRender)
+  else if (state.masterTab === 'settings') renderSettingsTab(panel, scheduleRender)
+  else renderBlockedTab(panel, scheduleRender)
+  main.appendChild(panel)
 
   shell.appendChild(main)
 }

@@ -1,6 +1,7 @@
 /** Глобальное состояние мини-аппа. */
 
 import type { Appointment, Slot } from './api'
+import { toYYYYMMDD } from './utils'
 
 export type MasterAppointment = {
   id: number
@@ -56,7 +57,7 @@ export const state = {
   rescheduleAppointmentId: null as number | null,
   bookingPhone: '' as string,
   masterTab: 'schedule' as 'schedule' | 'clients' | 'settings' | 'blocked',
-  masterScheduleDate: toDateStr(),
+  masterScheduleDate: toYYYYMMDD(new Date()),
   masterAppointments: [] as MasterAppointment[],
   masterClients: [] as MasterClient[],
   masterSettings: null as MasterSettings | null,
@@ -66,12 +67,4 @@ export const state = {
   submitting: false,
   masterSavingDay: null as number | null,
   masterBlockedSubmitting: false,
-}
-
-function toDateStr(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
 }

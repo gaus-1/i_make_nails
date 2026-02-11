@@ -2,8 +2,7 @@
 
 import './style.css'
 
-import { apiGet } from './api'
-import { API } from './api'
+import { API, apiGet } from './api'
 import { state } from './state'
 import { renderClient } from './render-client'
 import { initMaster, renderMaster } from './render-master'
