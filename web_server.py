@@ -58,28 +58,37 @@ async def create_app() -> web.Application:
 
     # В режиме E2E не поднимаем бота (не нужен валидный TELEGRAM_BOT_TOKEN)
     if os.environ.get("E2E_SERVER") != "1":
-        from aiogram import Bot, Dispatcher
-        from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+        try:
+            from aiogram import Bot, Dispatcher
+            from aiogram.utils.token import TokenValidationError
+            from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-        from bot.handlers import start_router
+            from bot.handlers import start_router
 
-        async def on_startup(bot: Bot) -> None:
-            host = _normalize_webhook_domain(settings.webhook_domain)
-            if not host:
-                raise ValueError("WEBHOOK_DOMAIN пустой или неверный")
-            webhook_url = f"https://{host}/webhook"
-            logger.info("Setting webhook: {}", webhook_url)
-            await bot.set_webhook(webhook_url, drop_pending_updates=True)
-            logger.info("Webhook set successfully")
+            async def on_startup(bot: Bot) -> None:
+                host = _normalize_webhook_domain(settings.webhook_domain)
+                if not host:
+                    raise ValueError("WEBHOOK_DOMAIN пустой или неверный")
+                webhook_url = f"https://{host}/webhook"
+                logger.info("Setting webhook: {}", webhook_url)
+                await bot.set_webhook(webhook_url, drop_pending_updates=True)
+                logger.info("Webhook set successfully")
 
-        bot = Bot(token=settings.telegram_bot_token)
-        dp = Dispatcher()
-        dp.include_router(start_router)
-        dp.startup.register(on_startup)
+            bot = Bot(token=settings.telegram_bot_token)
+            dp = Dispatcher()
+            dp.include_router(start_router)
+            dp.startup.register(on_startup)
 
-        webhook_path = "/webhook"
-        SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
-        setup_application(app, dp, bot=bot)
+            webhook_path = "/webhook"
+            SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
+            setup_application(app, dp, bot=bot)
+        except TokenValidationError:
+            if settings.miniapp_auth == "dev":
+                logger.warning(
+                    "Telegram token invalid; running without bot. Mini-app API and static only."
+                )
+            else:
+                raise
 
     # Статика мини-приложения (собранный frontend из Docker)
     static_dir = Path(__file__).resolve().parent / "static"

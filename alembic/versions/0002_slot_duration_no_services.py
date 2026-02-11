@@ -15,19 +15,19 @@ def upgrade() -> None:
         "master",
         sa.Column("slot_duration_minutes", sa.Integer(), nullable=False, server_default="120"),
     )
-    op.alter_column(
-        "appointment",
-        "service_id",
-        existing_type=sa.Integer(),
-        nullable=True,
-    )
+    with op.batch_alter_table("appointment") as batch_op:
+        batch_op.alter_column(
+            "service_id",
+            existing_type=sa.Integer(),
+            nullable=True,
+        )
 
 
 def downgrade() -> None:
-    op.alter_column(
-        "appointment",
-        "service_id",
-        existing_type=sa.Integer(),
-        nullable=False,
-    )
+    with op.batch_alter_table("appointment") as batch_op:
+        batch_op.alter_column(
+            "service_id",
+            existing_type=sa.Integer(),
+            nullable=False,
+        )
     op.drop_column("master", "slot_duration_minutes")

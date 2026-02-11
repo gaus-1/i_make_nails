@@ -1,6 +1,6 @@
 """Конфигурация приложения из переменных окружения."""
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -8,6 +8,16 @@ class Settings(BaseSettings):
     """Параметры из env: токен бота, БД, мастер/админ, мини-апп."""
 
     telegram_bot_token: str = Field(..., alias="TELEGRAM_BOT_TOKEN")
+
+    @field_validator("telegram_bot_token", mode="before")
+    @classmethod
+    def strip_token(cls, v: str) -> str:
+        if not isinstance(v, str):
+            return v
+        # Убрать BOM, \r\n, пробелы и любые символы, не входящие в формат токена (цифры:буквы-цифры)
+        cleaned = "".join(c for c in v.strip() if c.isalnum() or c in ":_-.")
+        return cleaned.strip() if cleaned else v.strip()
+
     database_url: str = Field(..., alias="DATABASE_URL")
     secret_key: str = Field(..., alias="SECRET_KEY")
 

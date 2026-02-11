@@ -1,6 +1,7 @@
 /** Рендер панели мастера: расписание, клиенты, настройки. */
 
 import { API, apiGet, authHeaders, normalizeApiError } from './api'
+import type { Slot } from './api'
 import {
   state,
   type BlockedSlotItem,
@@ -9,7 +10,7 @@ import {
   type MasterSettings,
   type WorkScheduleItem,
 } from './state'
-import { toYYYYMMDD } from './utils'
+import { addDays, formatSlotTime, toYYYYMMDD } from './utils'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 const TIMEZONES = [
@@ -38,15 +39,21 @@ async function withMasterLoading(
 async function loadMasterAppointments(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
     const tab = state.masterTab
+    const date = state.masterScheduleDate
     try {
-      const data = await apiGet<{ date: string; appointments: MasterAppointment[] }>(
-        API.masterAppointments(state.masterScheduleDate)
-      )
-      if (state.masterTab !== tab) return
-      state.masterAppointments = data.appointments
+      const [appointmentsRes, slotsRes] = await Promise.all([
+        apiGet<{ date: string; appointments: MasterAppointment[] }>(
+          API.masterAppointments(date)
+        ),
+        apiGet<{ date: string; slots: Slot[] }>(API.slots(date)),
+      ])
+      if (state.masterTab !== tab || state.masterScheduleDate !== date) return
+      state.masterAppointments = appointmentsRes.appointments
+      state.masterSlots = slotsRes.slots
     } catch (e) {
       if (state.masterTab !== tab) return
       state.masterAppointments = []
+      state.masterSlots = []
       state.masterError = e instanceof Error ? e.message : String(e)
     }
   })
@@ -223,6 +230,10 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
   dateInput.type = 'date'
   dateInput.value = state.masterScheduleDate
   dateInput.className = 'shell__input shell__date-input'
+  const today = new Date()
+  const maxDate = addDays(today, 31)
+  dateInput.min = toYYYYMMDD(today)
+  dateInput.max = toYYYYMMDD(maxDate)
   dateInput.addEventListener('change', () => {
     state.masterScheduleDate = dateInput.value
     loadMasterAppointments(scheduleRender)
@@ -233,28 +244,54 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
     p.className = 'shell__section-caption'
     p.textContent = 'Загрузка…'
     card.appendChild(p)
-  } else if (state.masterAppointments.length === 0) {
-    const p = document.createElement('p')
-    p.className = 'shell__section-caption'
-    p.textContent = 'Нет записей.'
-    card.appendChild(p)
   } else {
-    const list = document.createElement('div')
-    list.className = 'shell__appointments-list'
-    for (const a of state.masterAppointments) {
-      const item = document.createElement('div')
-      item.className = 'shell__appointment-item'
-      const name = document.createElement('div')
-      name.className = 'shell__appointment-name'
-      name.textContent = `${formatTime(a.datetime_local)} · ${a.client_name} · ${a.service_name}`
-      const meta = document.createElement('div')
-      meta.className = 'shell__appointment-meta'
-      meta.textContent = a.client_phone ?? '—'
-      item.appendChild(name)
-      item.appendChild(meta)
-      list.appendChild(item)
+    const subTitleApp = document.createElement('h3')
+    subTitleApp.className = 'shell__section-caption shell__settings-ws-title'
+    subTitleApp.textContent = 'Записи'
+    card.appendChild(subTitleApp)
+    if (state.masterAppointments.length === 0) {
+      const p = document.createElement('p')
+      p.className = 'shell__section-caption'
+      p.textContent = 'Нет записей.'
+      card.appendChild(p)
+    } else {
+      const list = document.createElement('div')
+      list.className = 'shell__appointments-list'
+      for (const a of state.masterAppointments) {
+        const item = document.createElement('div')
+        item.className = 'shell__appointment-item'
+        const name = document.createElement('div')
+        name.className = 'shell__appointment-name'
+        name.textContent = `${formatTime(a.datetime_local)} · ${a.client_name} · ${a.service_name}`
+        const meta = document.createElement('div')
+        meta.className = 'shell__appointment-meta'
+        meta.textContent = a.client_phone ?? '—'
+        item.appendChild(name)
+        item.appendChild(meta)
+        list.appendChild(item)
+      }
+      card.appendChild(list)
     }
-    card.appendChild(list)
+    const subTitleSlots = document.createElement('h3')
+    subTitleSlots.className = 'shell__section-caption shell__settings-ws-title'
+    subTitleSlots.textContent = 'Свободные слоты'
+    card.appendChild(subTitleSlots)
+    if (state.masterSlots.length === 0) {
+      const p = document.createElement('p')
+      p.className = 'shell__section-caption'
+      p.textContent = 'Нет свободных слотов на эту дату.'
+      card.appendChild(p)
+    } else {
+      const slotsRow = document.createElement('div')
+      slotsRow.className = 'shell__slots-row'
+      for (const slot of state.masterSlots) {
+        const span = document.createElement('span')
+        span.className = 'shell__slot-tag'
+        span.textContent = formatSlotTime(slot.start_utc_iso)
+        slotsRow.appendChild(span)
+      }
+      card.appendChild(slotsRow)
+    }
   }
   main.appendChild(card)
 }

@@ -59,6 +59,7 @@ export const state = {
   masterTab: 'schedule' as 'schedule' | 'clients' | 'settings' | 'blocked',
   masterScheduleDate: toYYYYMMDD(new Date()),
   masterAppointments: [] as MasterAppointment[],
+  masterSlots: [] as Slot[],
   masterClients: [] as MasterClient[],
   masterSettings: null as MasterSettings | null,
   masterBlockedSlots: [] as BlockedSlotItem[],
