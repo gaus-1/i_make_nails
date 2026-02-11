@@ -639,7 +639,7 @@ function renderBlockedTab(main: HTMLElement, scheduleRender: () => void): void {
 
 export function renderMaster(shell: HTMLElement, scheduleRender: () => void): void {
   const main = document.createElement('main')
-  main.className = 'shell__main'
+  main.className = 'shell__main shell__main--master'
 
   const tabs = document.createElement('div')
   tabs.className = 'shell__period-tabs shell__period-tabs--master'

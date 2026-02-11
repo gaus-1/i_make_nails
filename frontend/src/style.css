@@ -549,6 +549,17 @@ body {
   margin-bottom: 12px;
 }
 
+.shell__main--master .shell__section-title,
+.shell__main--master .shell__section-caption,
+.shell__main--master .shell__day-card-title {
+  text-align: center;
+}
+
+.shell__main--master .shell__period-tab {
+  text-align: center;
+  justify-content: center;
+}
+
 .shell__period-tab {
   display: flex;
   align-items: center;

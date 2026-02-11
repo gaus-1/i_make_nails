@@ -1,9 +1,7 @@
-"""Подключение к БД и фабрика сессий."""
-
-from collections.abc import Generator
+"""Подключение к БД и фабрика сессий. Сессии для HTTP берут через bot.api.deps.get_db()."""
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from bot.config.settings import settings
 
@@ -17,12 +15,3 @@ if "sqlite" not in _db_url:
     _engine_kwargs = {"pool_pre_ping": True, "pool_size": 20, "max_overflow": 30}
 engine = create_engine(_db_url, **_engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
-
-
-def get_db() -> Generator[Session]:
-    """Контекстный менеджер сессии БД."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

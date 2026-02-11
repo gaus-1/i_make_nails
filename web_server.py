@@ -91,7 +91,9 @@ async def json_error_middleware(
 
 
 async def create_app() -> web.Application:
-    logger.add("logs/app.log", rotation="10 MB")
+    log_dir = Path(__file__).resolve().parent / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logger.add(str(log_dir / "app.log"), rotation="10 MB")
 
     app = web.Application(middlewares=[json_error_middleware])
 
@@ -161,26 +163,25 @@ async def create_app() -> web.Application:
 
 
 def _seed_e2e_db() -> None:
-    """Заполнить БД для E2E: один мастер, рабочее расписание. Для SQLite схему пересоздаём."""
+    """Очистить данные и заполнить БД для E2E: один мастер, расписание. Схема из миграций."""
     from datetime import time
 
-    from sqlalchemy import select
+    from sqlalchemy import delete
     from sqlalchemy.orm import Session
 
-    from bot.database.engine import SessionLocal, engine
-    from bot.models import Base, Master, WorkSchedule
+    from bot.database.engine import SessionLocal
+    from bot.models import Appointment, BlockedSlot, Client, Master, Service, WorkSchedule
 
-    # SQLite: пересоздать схему по текущим моделям (E2E может запускаться с уже существующим файлом)
-    if "sqlite" in (engine.url.drivername or ""):
-        Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
     db: Session = SessionLocal()
     try:
-        if db.execute(select(Master).limit(1)).scalars().first() is not None:
-            return
-    except Exception:
-        pass
-    try:
+        db.execute(delete(Appointment))
+        db.execute(delete(BlockedSlot))
+        db.execute(delete(WorkSchedule))
+        db.execute(delete(Service))
+        db.execute(delete(Client))
+        db.execute(delete(Master))
+        db.commit()
+
         master = Master(
             timezone="Europe/Moscow",
             booking_enabled=True,
@@ -204,6 +205,7 @@ def _seed_e2e_db() -> None:
 
 def main() -> None:
     if os.environ.get("E2E_SERVER") == "1":
+        _run_migrations()
         _seed_e2e_db()
     else:
         _run_migrations()
