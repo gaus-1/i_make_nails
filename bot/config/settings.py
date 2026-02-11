@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     @field_validator("telegram_bot_token", mode="before")
     @classmethod
-    def strip_token(cls, v: str) -> str:
+    def strip_token(_cls: type["Settings"], v: str) -> str:
         if not isinstance(v, str):
             return v
         # Убрать BOM, \r\n, пробелы и любые символы, не входящие в формат токена (цифры:буквы-цифры)
