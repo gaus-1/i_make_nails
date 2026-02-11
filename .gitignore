@@ -13,6 +13,9 @@ logs/
 **/.p*/
 .local/
 
+# Собранный фронт (генерируется при сборке и в E2E)
+static/
+
 # E2E артефакты
 test-results/
 playwright-report/

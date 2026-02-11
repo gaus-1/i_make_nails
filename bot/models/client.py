@@ -5,6 +5,8 @@ from bot.models.base import Base, TimestampMixin
 
 
 class Client(TimestampMixin, Base):
+    """Клиент мастера: telegram_id, контакт, право на запись."""
+
     __tablename__ = "client"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

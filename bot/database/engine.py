@@ -1,3 +1,5 @@
+"""Подключение к БД и фабрика сессий."""
+
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
@@ -5,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from bot.config.settings import settings
 
-# Use psycopg (v3) driver; Railway DATABASE_URL is often postgresql://
+# Railway DATABASE_URL часто без +psycopg — подставляем драйвер
 _db_url = settings.database_url
 if _db_url.startswith("postgresql://") and "+psycopg" not in _db_url:
     _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
@@ -15,6 +17,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expi
 
 
 def get_db() -> Generator[Session, None, None]:
+    """Контекстный менеджер сессии БД."""
     db = SessionLocal()
     try:
         yield db

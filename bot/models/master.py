@@ -5,6 +5,8 @@ from bot.models.base import Base, TimestampMixin
 
 
 class Master(TimestampMixin, Base):
+    """Мастер: один на проект, настройки записи и расписание."""
+
     __tablename__ = "master"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

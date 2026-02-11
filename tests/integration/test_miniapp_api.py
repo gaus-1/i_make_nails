@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from bot.api.miniapp import routes as routes_module
 from bot.api.miniapp.routes import setup_routes
 from bot.config.settings import settings
-from bot.models import Appointment, Base, BlockedSlot, Client, Master, Service, WorkSchedule
+from bot.models import Appointment, Base, Client, Master, Service, WorkSchedule
 
 
 def create_test_app(db: Session) -> web.Application:
@@ -324,7 +324,10 @@ async def test_reschedule_appointment(
         )
         assert resp.status == 200
         payload = await resp.json()
-        assert "2030-02-10T11:00:00" in payload["datetime_start_utc"] or "11:00" in payload["datetime_start_utc"]
+        assert (
+            "2030-02-10T11:00:00" in payload["datetime_start_utc"]
+            or "11:00" in payload["datetime_start_utc"]
+        )
 
         resp = await client.get(
             "/api/miniapp/appointments/my",
@@ -333,7 +336,10 @@ async def test_reschedule_appointment(
         assert resp.status == 200
         my_payload = await resp.json()
         assert len(my_payload["appointments"]) == 1
-        assert "11:00" in my_payload["appointments"][0]["datetime_start_utc"] or "11" in my_payload["appointments"][0]["datetime_start_utc"]
+        assert (
+            "11:00" in my_payload["appointments"][0]["datetime_start_utc"]
+            or "11" in my_payload["appointments"][0]["datetime_start_utc"]
+        )
     finally:
         await client.close()
 
@@ -351,7 +357,9 @@ async def test_master_clients_get_and_patch(
     master = Master(timezone="Europe/Moscow", booking_enabled=True)
     db.add(master)
     db.flush()
-    client_model = Client(master_id=master.id, telegram_id=777, name="Иван", phone="+7999", booking_allowed=True)
+    client_model = Client(
+        master_id=master.id, telegram_id=777, name="Иван", phone="+7999", booking_allowed=True
+    )
     db.add(client_model)
     db.commit()
 

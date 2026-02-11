@@ -11,6 +11,7 @@ router = Router(name="start")
 
 
 def _base_url() -> str:
+    """Базовый URL мини-аппа по WEBHOOK_DOMAIN."""
     return f"https://{settings.webhook_domain.rstrip('/')}"
 
 

@@ -86,7 +86,10 @@ def get_telegram_id_from_request(request: web.Request) -> int:
             ttl_seconds=settings.init_data_ttl_seconds,
         )
         if validated is None:
-            unauthorized("Недействительные данные сессии. Откройте приложение в Telegram.", code="invalid_init_data")
+            unauthorized(
+                "Недействительные данные сессии. Откройте приложение в Telegram.",
+                code="invalid_init_data",
+            )
         user_id = get_user_id_from_validated(validated)
         if user_id is None:
             unauthorized("Не удалось определить пользователя.", code="invalid_init_data")

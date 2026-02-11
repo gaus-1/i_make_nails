@@ -5,6 +5,8 @@ from bot.models.base import Base, TimestampMixin
 
 
 class Service(TimestampMixin, Base):
+    """Услуга мастера: название, длительность, порядок вывода."""
+
     __tablename__ = "service"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

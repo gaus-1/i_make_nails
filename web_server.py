@@ -1,3 +1,5 @@
+"""Точка входа HTTP: aiohttp, API мини-аппа, раздача статики. При E2E_SERVER=1 бот не поднимается."""
+
 import asyncio
 import os
 from pathlib import Path
@@ -95,6 +97,7 @@ def _seed_e2e_db() -> None:
     Base.metadata.create_all(bind=engine)
     db: Session = SessionLocal()
     try:
+        # Уже есть данные (например перезапуск с тем же e2e.db) — не дублировать
         if db.execute(select(Master).limit(1)).scalars().first() is not None:
             return
     except Exception:

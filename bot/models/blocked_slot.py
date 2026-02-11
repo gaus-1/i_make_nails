@@ -7,6 +7,8 @@ from bot.models.base import Base, TimestampMixin
 
 
 class BlockedSlot(TimestampMixin, Base):
+    """Заблокированный период дат у мастера (отпуск, выходной)."""
+
     __tablename__ = "blocked_slot"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

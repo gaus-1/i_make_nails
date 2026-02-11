@@ -7,6 +7,8 @@ from bot.models.base import Base, TimestampMixin
 
 
 class WorkSchedule(TimestampMixin, Base):
+    """Рабочие часы мастера по дню недели (0=Пн, 6=Вс)."""
+
     __tablename__ = "work_schedule"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

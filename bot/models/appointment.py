@@ -7,6 +7,8 @@ from bot.models.base import Base, TimestampMixin
 
 
 class Appointment(TimestampMixin, Base):
+    """Запись клиента на слот: мастер, клиент, услуга, время, статус."""
+
     __tablename__ = "appointment"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

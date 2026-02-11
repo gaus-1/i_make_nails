@@ -171,5 +171,7 @@ class BlockedSlotCreateIn(BaseModel):
     """Создание блокировки дат."""
 
     date_start: date = Field(..., description="Начало периода (включительно).")
-    date_end: date | None = Field(None, description="Конец периода (включительно). Одна дата, если не указано.")
+    date_end: date | None = Field(
+        None, description="Конец периода (включительно). Одна дата, если не указано."
+    )
     reason: str | None = Field(None, max_length=500)

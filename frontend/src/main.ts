@@ -1,3 +1,5 @@
+/** Точка входа: определение вида (client/master) и рендер оболочки с контентом. */
+
 import './style.css'
 
 import { state } from './state'

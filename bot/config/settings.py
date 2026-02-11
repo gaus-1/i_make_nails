@@ -1,8 +1,12 @@
+"""Конфигурация приложения из переменных окружения."""
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    """Параметры из env: токен бота, БД, мастер/админ, мини-апп."""
+
     telegram_bot_token: str = Field(..., alias="TELEGRAM_BOT_TOKEN")
     database_url: str = Field(..., alias="DATABASE_URL")
     secret_key: str = Field(..., alias="SECRET_KEY")
