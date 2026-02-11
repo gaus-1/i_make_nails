@@ -23,10 +23,27 @@ def _normalize_webhook_domain(raw: str) -> str:
     return s
 
 
+@web.middleware
+async def json_error_middleware(
+    request: web.Request, handler: web.views.RequestHandler
+) -> web.StreamResponse:
+    """Необработанные исключения — ответ 500 в формате JSON."""
+    try:
+        return await handler(request)
+    except web.HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Unhandled error: {}", exc)
+        return web.json_response(
+            {"error": "Internal server error.", "code": "internal_error"},
+            status=500,
+        )
+
+
 async def create_app() -> web.Application:
     logger.add("logs/app.log", rotation="10 MB")
 
-    app = web.Application()
+    app = web.Application(middlewares=[json_error_middleware])
 
     # Health endpoint
     async def health(request: web.Request) -> web.Response:  # noqa: ANN001

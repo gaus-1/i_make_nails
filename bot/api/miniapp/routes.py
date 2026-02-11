@@ -11,6 +11,7 @@ from bot.api.deps import (
     _get_single_master_id,
     conflict,
     forbidden,
+    get_db,
     get_telegram_id_from_request,
     not_found,
     parse_date,
@@ -37,7 +38,6 @@ from bot.api.schemas import (
     SlotsResponse,
     WorkScheduleItemOut,
 )
-from bot.database import SessionLocal
 from bot.models import Appointment, BlockedSlot, Client, Master, WorkSchedule
 from bot.services import AppointmentService, ScheduleService
 from bot.services.exceptions import SlotBusyError
@@ -60,7 +60,7 @@ async def get_free_slots(request: web.Request) -> web.Response:  # noqa: D401
     """Return free slots for a given date (one master, duration from master settings)."""
     target_date = parse_date("date", request.query.get("date"))
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = _get_single_master_id(db)
         master = db.get(Master, master_id)
         if master is None:
@@ -83,7 +83,7 @@ async def get_my_appointments(request: web.Request) -> web.Response:
     """Return list of appointments for current client."""
     telegram_id = get_telegram_id_from_request(request)
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = _get_single_master_id(db)
 
         client_stmt = select(Client).where(
@@ -136,7 +136,7 @@ async def create_appointment(request: web.Request) -> web.Response:
     payload_raw = await request.json()
     data = AppointmentCreateIn.model_validate(payload_raw)
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = _get_single_master_id(db)
 
         master = db.get(Master, master_id)
@@ -197,7 +197,7 @@ async def cancel_appointment(request: web.Request) -> web.Response:
     telegram_id = get_telegram_id_from_request(request)
     appointment_id = parse_int("appointment_id", request.match_info.get("appointment_id"))
 
-    with SessionLocal() as db:
+    with get_db() as db:
         stmt = (
             select(Appointment)
             .options(joinedload(Appointment.client), joinedload(Appointment.service))
@@ -244,7 +244,7 @@ async def reschedule_appointment(request: web.Request) -> web.Response:
     payload_raw = await request.json()
     data = AppointmentRescheduleIn.model_validate(payload_raw)
 
-    with SessionLocal() as db:
+    with get_db() as db:
         stmt = (
             select(Appointment)
             .options(joinedload(Appointment.client), joinedload(Appointment.service))
@@ -297,7 +297,7 @@ async def get_master_appointments(request: web.Request) -> web.Response:
     """Return master's daily schedule (requires master/admin role)."""
     target_date = parse_date("date", request.query.get("date"))
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
         master = db.get(Master, master_id)
         if master is None:
@@ -349,7 +349,7 @@ async def get_master_appointments(request: web.Request) -> web.Response:
 @routes.get("/api/miniapp/master/clients")
 async def get_master_clients(request: web.Request) -> web.Response:
     """Return list of clients for master (requires master/admin role)."""
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
 
         now_utc = datetime.now(UTC)
@@ -396,7 +396,7 @@ async def patch_master_client(request: web.Request) -> web.Response:
     payload_raw = await request.json() or {}
     data = ClientPatchIn.model_validate(payload_raw)
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
         client = db.get(Client, client_id)
         if client is None or client.master_id != master_id:
@@ -432,7 +432,7 @@ async def patch_master_client(request: web.Request) -> web.Response:
 @routes.get("/api/miniapp/master/settings")
 async def get_master_settings(request: web.Request) -> web.Response:
     """Return master settings (booking_enabled, timezone, work_schedule). Requires master/admin."""
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
         master = db.get(Master, master_id)
         if master is None:
@@ -459,7 +459,7 @@ async def patch_master_settings(request: web.Request) -> web.Response:
     payload_raw = await request.json() or {}
     data = MasterSettingsPatchIn.model_validate(payload_raw)
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
         master = db.get(Master, master_id)
         if master is None:
@@ -513,7 +513,7 @@ async def get_master_blocked_slots(request: web.Request) -> web.Response:
     if date_to < date_from:
         conflict("date_to должен быть не раньше date_from.", code="invalid_range")
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
         stmt = (
             select(BlockedSlot)
@@ -546,7 +546,7 @@ async def post_master_blocked_slots(request: web.Request) -> web.Response:
     if date_end < data.date_start:
         conflict("date_end не может быть раньше date_start.", code="invalid_range")
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
         master = db.get(Master, master_id)
         if master is None:
@@ -579,7 +579,7 @@ async def delete_master_blocked_slot(request: web.Request) -> web.Response:
     """Удалить блокировку."""
     blocked_slot_id = parse_int("blocked_slot_id", request.match_info.get("blocked_slot_id"))
 
-    with SessionLocal() as db:
+    with get_db() as db:
         master_id = require_master(db, request)
         b = db.get(BlockedSlot, blocked_slot_id)
         if b is None or b.master_id != master_id:

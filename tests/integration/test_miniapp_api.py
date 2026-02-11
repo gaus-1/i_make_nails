@@ -14,23 +14,29 @@ from bot.config.settings import settings
 from bot.models import Appointment, Base, Client, Master, Service, WorkSchedule
 
 
-def create_test_app(db: Session) -> web.Application:
-    """Create aiohttp app wired to a given SQLAlchemy session."""
+def create_test_app() -> web.Application:
+    """Create aiohttp app with routes (DB patched via monkeypatch in tests)."""
     app = web.Application()
     setup_routes(app)
     return app
 
 
 def setup_in_memory_session(monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Prepare in-memory SQLite DB and patch SessionLocal to use it."""
+    """Prepare in-memory SQLite DB and patch get_db in routes to use it."""
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     Base.metadata.create_all(bind=engine)
-    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    test_session_factory = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
+    )
+    monkeypatch.setattr(routes_module, "get_db", test_session_factory)
+    return test_session_factory()
 
-    # patch SessionLocal used by API handlers in miniapp.routes
-    monkeypatch.setattr(routes_module, "SessionLocal", SessionLocal, raising=False)
 
-    return SessionLocal()
+def _patch_dev_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Включить dev-режим и задать master/admin Telegram ID для тестов."""
+    monkeypatch.setattr(settings, "master_telegram_ids", "111")
+    monkeypatch.setattr(settings, "admin_telegram_ids", "222")
+    monkeypatch.setattr(settings, "miniapp_auth", "dev")
 
 
 @pytest.mark.asyncio
@@ -64,7 +70,7 @@ async def test_full_client_flow_create_and_list_appointments(
     db.add(ws)
     db.commit()
 
-    app = create_test_app(db)
+    app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
     await client.start_server()
@@ -148,7 +154,7 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
     db.add(appt)
     db.commit()
 
-    app = create_test_app(db)
+    app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
     await client.start_server()
@@ -224,7 +230,7 @@ async def test_cancel_appointment(
     db.commit()
     appt_id = appt.id
 
-    app = create_test_app(db)
+    app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
     await client.start_server()
@@ -298,7 +304,7 @@ async def test_reschedule_appointment(
     appt_id = appt.id
     new_slot_iso = "2030-02-10T11:00:00+00:00"
 
-    app = create_test_app(db)
+    app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
     await client.start_server()
@@ -350,7 +356,7 @@ async def test_master_clients_get_and_patch(
     db.add(client_model)
     db.commit()
 
-    app = create_test_app(db)
+    app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
     await client.start_server()
@@ -399,7 +405,7 @@ async def test_master_settings_get_and_patch(
     db.add(master)
     db.commit()
 
-    app = create_test_app(db)
+    app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
     await client.start_server()
@@ -447,7 +453,7 @@ async def test_blocked_slots_get_post_delete(
     db.add(master)
     db.commit()
 
-    app = create_test_app(db)
+    app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
     await client.start_server()
@@ -495,5 +501,127 @@ async def test_blocked_slots_get_post_delete(
         )
         assert resp.status == 200
         assert (await resp.json())["blocked_slots"] == []
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_slots_missing_date_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Слоты без параметра date возвращают 400."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    db.add(Master(timezone="Europe/Moscow", booking_enabled=True))
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.get("/api/miniapp/slots")
+        assert resp.status == 400
+        data = await resp.json()
+        assert "error" in data and "code" in data
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_create_appointment_slot_busy_409(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Создание записи в занятый слот возвращает 409."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    master = Master(
+        timezone="Europe/Moscow",
+        booking_enabled=True,
+        slot_duration_minutes=60,
+    )
+    db.add(master)
+    db.flush()
+    today = date(2026, 2, 10)
+    ws = WorkSchedule(
+        master_id=master.id,
+        day_of_week=today.weekday(),
+        time_start=time(10, 0),
+        time_end=time(14, 0),
+    )
+    db.add(ws)
+    client_model = Client(master_id=master.id, telegram_id=555, name="Клиент", phone=None)
+    db.add(client_model)
+    db.flush()
+    slot_start = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
+    existing = Appointment(
+        master_id=master.id,
+        client_id=client_model.id,
+        service_id=None,
+        datetime_start=slot_start,
+        datetime_end=slot_start + timedelta(minutes=60),
+        status="confirmed",
+        source="miniapp",
+    )
+    db.add(existing)
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.post(
+            "/api/miniapp/appointments",
+            headers={"X-Telegram-Id": "555"},
+            json={
+                "telegram_id": 555,
+                "name": "Другой",
+                "phone": None,
+                "slot_start_utc": "2026-02-10T10:00:00+00:00",
+            },
+        )
+        assert resp.status == 409
+        data = await resp.json()
+        assert data.get("code") == "slot_busy"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_cancel_not_own_appointment_403(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Клиент не может отменить чужую запись — 403."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    master = Master(timezone="Europe/Moscow", booking_enabled=True)
+    db.add(master)
+    db.flush()
+    client_owner = Client(master_id=master.id, telegram_id=111, name="Владелец", phone=None)
+    client_other = Client(master_id=master.id, telegram_id=999, name="Чужой", phone=None)
+    db.add(client_owner)
+    db.add(client_other)
+    db.flush()
+    start_utc = datetime(2030, 2, 10, 10, 0, tzinfo=UTC)
+    appt = Appointment(
+        master_id=master.id,
+        client_id=client_owner.id,
+        service_id=None,
+        datetime_start=start_utc,
+        datetime_end=start_utc + timedelta(minutes=60),
+        status="confirmed",
+        source="miniapp",
+    )
+    db.add(appt)
+    db.commit()
+    appt_id = appt.id
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.post(
+            f"/api/miniapp/appointments/{appt_id}/cancel",
+            headers={"X-Telegram-Id": "999"},
+        )
+        assert resp.status == 403
+        data = await resp.json()
+        assert data.get("code") == "not_your_appointment"
     finally:
         await client.close()
