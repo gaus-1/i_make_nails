@@ -74,7 +74,11 @@ async def get_free_slots(request: web.Request) -> web.Response:  # noqa: D401
         )
         slots = [SlotOut(start_utc_iso=slot.isoformat()) for slot in daily_slots.slots_utc]
 
-    body = SlotsResponse(date=daily_slots.date.isoformat(), slots=slots)
+    body = SlotsResponse(
+        date=daily_slots.date.isoformat(),
+        slots=slots,
+        slot_duration_minutes=master.slot_duration_minutes,
+    )
     return web.json_response(body.model_dump(mode="json"))
 
 
@@ -294,8 +298,12 @@ async def reschedule_appointment(request: web.Request) -> web.Response:
 
 @routes.get("/api/miniapp/master/appointments")
 async def get_master_appointments(request: web.Request) -> web.Response:
-    """Return master's daily schedule (requires master/admin role)."""
+    """Return master's schedule for a day or date range (requires master/admin role)."""
     target_date = parse_date("date", request.query.get("date"))
+    date_to_str = request.query.get("date_to")
+    end_date = parse_date("date_to", date_to_str) if date_to_str else target_date
+    if end_date < target_date:
+        end_date = target_date
 
     with get_db() as db:
         master_id = require_master(db, request)
@@ -305,7 +313,7 @@ async def get_master_appointments(request: web.Request) -> web.Response:
 
         tz = ZoneInfo(master.timezone)
         day_start_local = datetime.combine(target_date, time(0, 0), tzinfo=tz)
-        day_end_local = day_start_local + timedelta(days=1)
+        day_end_local = datetime.combine(end_date, time(0, 0), tzinfo=tz) + timedelta(days=1)
 
         day_start_utc = day_start_local.astimezone(UTC)
         day_end_utc = day_end_local.astimezone(UTC)
@@ -333,6 +341,7 @@ async def get_master_appointments(request: web.Request) -> web.Response:
                     id=appt.id,
                     client_name=appt.client.name if appt.client else "—",
                     client_phone=appt.client.phone if appt.client else None,
+                    client_telegram_id=appt.client.telegram_id if appt.client else None,
                     service_name=appt.service.name if appt.service else "Запись",
                     datetime_local=local_start,
                     status=appt.status,
@@ -380,6 +389,7 @@ async def get_master_clients(request: web.Request) -> web.Response:
                     id=c.id,
                     name=c.name,
                     phone=c.phone,
+                    telegram_id=c.telegram_id,
                     booking_allowed=c.booking_allowed,
                     future_appointments_count=future_count,
                 )
@@ -500,6 +510,7 @@ async def patch_master_settings(request: web.Request) -> web.Response:
     body = MasterSettingsOut(
         booking_enabled=master.booking_enabled,
         timezone=master.timezone,
+        slot_duration_minutes=master.slot_duration_minutes,
         work_schedule=[WorkScheduleItemOut.model_validate(ws) for ws in work_schedule],
     )
     return web.json_response(body.model_dump(mode="json"))

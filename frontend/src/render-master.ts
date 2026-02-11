@@ -1,6 +1,6 @@
 /** Рендер панели мастера: расписание, клиенты, настройки. */
 
-import { API, apiGet, authHeaders, normalizeApiError } from './api'
+import { API, apiGet, apiPatch, authHeaders, normalizeApiError } from './api'
 import type { Slot } from './api'
 import {
   state,
@@ -13,6 +13,16 @@ import {
 import { addDays, formatSlotTime, toYYYYMMDD } from './utils'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+/** Открыть чат с пользователем в Telegram (из мини-аппа). */
+function openTelegramChat(telegramId: number): void {
+  const url = `tg://user?id=${telegramId}`
+  if (typeof window.Telegram !== 'undefined' && window.Telegram?.WebApp?.openLink) {
+    window.Telegram.WebApp.openLink(url)
+  } else {
+    window.location.href = url
+  }
+}
 const TIMEZONES = [
   'Europe/Moscow',
   'Europe/Samara',
@@ -36,24 +46,57 @@ async function withMasterLoading(
   }
 }
 
+function parseDateStr(s: string): Date {
+  return new Date(s + 'T12:00:00')
+}
+
 async function loadMasterAppointments(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
     const tab = state.masterTab
     const date = state.masterScheduleDate
+    const view = state.masterScheduleView
     try {
-      const [appointmentsRes, slotsRes] = await Promise.all([
-        apiGet<{ date: string; appointments: MasterAppointment[] }>(
-          API.masterAppointments(date)
-        ),
-        apiGet<{ date: string; slots: Slot[] }>(API.slots(date)),
-      ])
-      if (state.masterTab !== tab || state.masterScheduleDate !== date) return
-      state.masterAppointments = appointmentsRes.appointments
-      state.masterSlots = slotsRes.slots
+      if (view === 'week') {
+        const dateTo = toYYYYMMDD(addDays(parseDateStr(date), 6))
+        const appointmentsRes = await apiGet<{ date: string; appointments: MasterAppointment[] }>(
+          API.masterAppointments(date, dateTo)
+        )
+        if (state.masterTab !== tab || state.masterScheduleDate !== date) return
+        state.masterAppointments = appointmentsRes.appointments
+        const dayDates: string[] = []
+        for (let i = 0; i < 7; i++) {
+          dayDates.push(toYYYYMMDD(addDays(parseDateStr(date), i)))
+        }
+        const slotResponses = await Promise.all(
+          dayDates.map((d) =>
+            apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(API.slots(d))
+          )
+        )
+        if (state.masterTab !== tab || state.masterScheduleDate !== date) return
+        state.masterSlotsByDate = {}
+        for (let i = 0; i < dayDates.length; i++) {
+          state.masterSlotsByDate[dayDates[i]] = slotResponses[i].slots
+        }
+        state.masterSlots = slotResponses[0]?.slots ?? []
+        state.masterSlotDurationMinutes = slotResponses[0]?.slot_duration_minutes ?? null
+      } else {
+        const [appointmentsRes, slotsRes] = await Promise.all([
+          apiGet<{ date: string; appointments: MasterAppointment[] }>(
+            API.masterAppointments(date)
+          ),
+          apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(API.slots(date)),
+        ])
+        if (state.masterTab !== tab || state.masterScheduleDate !== date) return
+        state.masterAppointments = appointmentsRes.appointments
+        state.masterSlots = slotsRes.slots
+        state.masterSlotsByDate = {}
+        state.masterSlotDurationMinutes = slotsRes.slot_duration_minutes ?? null
+      }
     } catch (e) {
       if (state.masterTab !== tab) return
       state.masterAppointments = []
       state.masterSlots = []
+      state.masterSlotsByDate = {}
       state.masterError = e instanceof Error ? e.message : String(e)
     }
   })
@@ -175,20 +218,11 @@ async function patchClientBookingAllowed(
   scheduleRender: () => void
 ): Promise<void> {
   try {
-    const r = await fetch(API.masterClient(clientId), {
-      method: 'PATCH',
-      headers: authHeaders(),
-      body: JSON.stringify({ booking_allowed: bookingAllowed }),
+    const updated = await apiPatch<MasterClient>(API.masterClient(clientId), {
+      booking_allowed: bookingAllowed,
     })
-    const text = await r.text()
-    if (!r.ok) throw new Error(normalizeApiError(text))
-    try {
-      const updated = JSON.parse(text) as MasterClient
-      const idx = state.masterClients.findIndex((c) => c.id === clientId)
-      if (idx >= 0) state.masterClients[idx] = updated
-    } catch {
-      state.masterError = normalizeApiError(text)
-    }
+    const idx = state.masterClients.findIndex((c) => c.id === clientId)
+    if (idx >= 0) state.masterClients[idx] = updated
   } catch (e) {
     state.masterError = e instanceof Error ? e.message : String(e)
   }
@@ -219,12 +253,83 @@ async function patchMasterSettings(
   scheduleRender()
 }
 
+function renderAppointmentList(
+  container: HTMLElement,
+  appointments: MasterAppointment[],
+  showSlots: Slot[],
+  slotDurationMinutes: number | null
+): void {
+  const subApp = document.createElement('h3')
+  subApp.className = 'shell__section-caption shell__settings-ws-title'
+  subApp.textContent = 'Записи'
+  container.appendChild(subApp)
+  if (appointments.length === 0) {
+    const p = document.createElement('p')
+    p.className = 'shell__section-caption'
+    p.textContent = 'Нет записей.'
+    container.appendChild(p)
+  } else {
+    const list = document.createElement('div')
+    list.className = 'shell__appointments-list'
+    for (const a of appointments) {
+      const item = document.createElement('div')
+      item.className = 'shell__appointment-item shell__appointment-item--with-actions'
+      const name = document.createElement('div')
+      name.className = 'shell__appointment-name'
+      name.textContent = `${formatTime(a.datetime_local)} · ${a.client_name} · ${a.service_name}`
+      const meta = document.createElement('div')
+      meta.className = 'shell__appointment-meta'
+      const contactText = a.client_phone ?? (a.client_telegram_id != null ? `Telegram ID: ${a.client_telegram_id}` : '—')
+      meta.textContent = contactText
+      item.appendChild(name)
+      item.appendChild(meta)
+      if (a.client_telegram_id != null) {
+        const writeBtn = document.createElement('button')
+        writeBtn.type = 'button'
+        writeBtn.className = 'shell__pill shell__pill--small'
+        writeBtn.textContent = 'Написать'
+        writeBtn.addEventListener('click', () => openTelegramChat(a.client_telegram_id!))
+        item.appendChild(writeBtn)
+      }
+      list.appendChild(item)
+    }
+    container.appendChild(list)
+  }
+  const subSlots = document.createElement('h3')
+  subSlots.className = 'shell__section-caption shell__settings-ws-title'
+  subSlots.textContent = 'Свободные слоты'
+  container.appendChild(subSlots)
+  if (showSlots.length === 0) {
+    const p = document.createElement('p')
+    p.className = 'shell__section-caption'
+    p.textContent = 'Нет свободных слотов.'
+    container.appendChild(p)
+  } else {
+    const slotsRow = document.createElement('div')
+    slotsRow.className = 'shell__slots-row'
+    for (const slot of showSlots) {
+      const span = document.createElement('span')
+      span.className = 'shell__slot-tag'
+      span.textContent = formatSlotTime(slot.start_utc_iso)
+      slotsRow.appendChild(span)
+    }
+    container.appendChild(slotsRow)
+  }
+  if (slotDurationMinutes != null) {
+    const dur = slotDurationMinutes
+    const hint = document.createElement('p')
+    hint.className = 'shell__section-caption shell__hint'
+    hint.textContent = dur >= 60 ? `Окна по ${dur / 60} ч` : `Окна по ${dur} мин`
+    container.appendChild(hint)
+  }
+}
+
 function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void {
   const card = document.createElement('section')
   card.className = 'shell__card shell__section master-schedule'
   const title = document.createElement('h2')
   title.className = 'shell__section-title'
-  title.textContent = 'Расписание дня'
+  title.textContent = 'Расписание'
   card.appendChild(title)
   const dateInput = document.createElement('input')
   dateInput.type = 'date'
@@ -239,59 +344,59 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
     loadMasterAppointments(scheduleRender)
   })
   card.appendChild(dateInput)
+  const viewTabs = document.createElement('div')
+  viewTabs.className = 'shell__period-tabs'
+  const dayBtn = document.createElement('button')
+  dayBtn.type = 'button'
+  dayBtn.className = 'shell__period-tab' + (state.masterScheduleView === 'day' ? ' shell__period-tab--active' : '')
+  dayBtn.textContent = 'День'
+  dayBtn.addEventListener('click', () => {
+    state.masterScheduleView = 'day'
+    loadMasterAppointments(scheduleRender)
+  })
+  const weekBtn = document.createElement('button')
+  weekBtn.type = 'button'
+  weekBtn.className = 'shell__period-tab' + (state.masterScheduleView === 'week' ? ' shell__period-tab--active' : '')
+  weekBtn.textContent = 'Неделя'
+  weekBtn.addEventListener('click', () => {
+    state.masterScheduleView = 'week'
+    loadMasterAppointments(scheduleRender)
+  })
+  viewTabs.appendChild(dayBtn)
+  viewTabs.appendChild(weekBtn)
+  card.appendChild(viewTabs)
   if (state.masterLoading) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
     p.textContent = 'Загрузка…'
     card.appendChild(p)
+  } else if (state.masterScheduleView === 'week') {
+    const dayDates: string[] = []
+    for (let i = 0; i < 7; i++) {
+      dayDates.push(toYYYYMMDD(addDays(parseDateStr(state.masterScheduleDate), i)))
+    }
+    for (const dateStr of dayDates) {
+      const dayCard = document.createElement('div')
+      dayCard.className = 'shell__day-card'
+      const dayTitle = document.createElement('h3')
+      dayTitle.className = 'shell__section-title shell__day-card-title'
+      const d = parseDateStr(dateStr)
+      dayTitle.textContent = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })
+      dayCard.appendChild(dayTitle)
+      const dayAppointments = state.masterAppointments.filter(
+        (a) => (a.datetime_local.slice(0, 10)) === dateStr
+      )
+      const daySlots = state.masterSlotsByDate[dateStr] ?? []
+      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes)
+      card.appendChild(dayCard)
+    }
   } else {
-    const subTitleApp = document.createElement('h3')
-    subTitleApp.className = 'shell__section-caption shell__settings-ws-title'
-    subTitleApp.textContent = 'Записи'
-    card.appendChild(subTitleApp)
-    if (state.masterAppointments.length === 0) {
-      const p = document.createElement('p')
-      p.className = 'shell__section-caption'
-      p.textContent = 'Нет записей.'
-      card.appendChild(p)
-    } else {
-      const list = document.createElement('div')
-      list.className = 'shell__appointments-list'
-      for (const a of state.masterAppointments) {
-        const item = document.createElement('div')
-        item.className = 'shell__appointment-item'
-        const name = document.createElement('div')
-        name.className = 'shell__appointment-name'
-        name.textContent = `${formatTime(a.datetime_local)} · ${a.client_name} · ${a.service_name}`
-        const meta = document.createElement('div')
-        meta.className = 'shell__appointment-meta'
-        meta.textContent = a.client_phone ?? '—'
-        item.appendChild(name)
-        item.appendChild(meta)
-        list.appendChild(item)
-      }
-      card.appendChild(list)
-    }
-    const subTitleSlots = document.createElement('h3')
-    subTitleSlots.className = 'shell__section-caption shell__settings-ws-title'
-    subTitleSlots.textContent = 'Свободные слоты'
-    card.appendChild(subTitleSlots)
-    if (state.masterSlots.length === 0) {
-      const p = document.createElement('p')
-      p.className = 'shell__section-caption'
-      p.textContent = 'Нет свободных слотов на эту дату.'
-      card.appendChild(p)
-    } else {
-      const slotsRow = document.createElement('div')
-      slotsRow.className = 'shell__slots-row'
-      for (const slot of state.masterSlots) {
-        const span = document.createElement('span')
-        span.className = 'shell__slot-tag'
-        span.textContent = formatSlotTime(slot.start_utc_iso)
-        slotsRow.appendChild(span)
-      }
-      card.appendChild(slotsRow)
-    }
+    renderAppointmentList(
+      card,
+      state.masterAppointments,
+      state.masterSlots,
+      state.masterSlotDurationMinutes
+    )
   }
   main.appendChild(card)
 }
@@ -313,26 +418,35 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
     list.className = 'shell__appointments-list shell__clients-list'
     for (const c of state.masterClients) {
       const item = document.createElement('div')
-      item.className = 'shell__appointment-item'
+      item.className = 'shell__appointment-item shell__appointment-item--with-actions'
       const name = document.createElement('div')
       name.className = 'shell__appointment-name'
       name.textContent = c.name
       const meta = document.createElement('div')
       meta.className = 'shell__appointment-meta'
-      meta.textContent = `${c.phone ?? '—'} · записей впереди: ${c.future_appointments_count}`
+      const contactText = c.phone ?? (c.telegram_id != null ? `Telegram ID: ${c.telegram_id}` : '—')
+      meta.textContent = `${contactText} · записей впереди: ${c.future_appointments_count}`
       item.appendChild(name)
       item.appendChild(meta)
-      const label = document.createElement('label')
-      label.className = 'shell__label-row'
-      const cb = document.createElement('input')
-      cb.type = 'checkbox'
-      cb.checked = c.booking_allowed
-      cb.addEventListener('change', () => {
-        patchClientBookingAllowed(c.id, cb.checked, scheduleRender)
+      const actions = document.createElement('div')
+      actions.className = 'shell__client-actions'
+      if (c.telegram_id != null) {
+        const writeBtn = document.createElement('button')
+        writeBtn.type = 'button'
+        writeBtn.className = 'shell__pill shell__pill--small'
+        writeBtn.textContent = 'Написать'
+        writeBtn.addEventListener('click', () => openTelegramChat(c.telegram_id!))
+        actions.appendChild(writeBtn)
+      }
+      const bookingBtn = document.createElement('button')
+      bookingBtn.type = 'button'
+      bookingBtn.className = c.booking_allowed ? 'shell__pill shell__pill--danger-outline' : 'shell__pill shell__pill--small'
+      bookingBtn.textContent = c.booking_allowed ? 'Запретить запись' : 'Разрешить запись'
+      bookingBtn.addEventListener('click', async () => {
+        await patchClientBookingAllowed(c.id, !c.booking_allowed, scheduleRender)
       })
-      label.appendChild(cb)
-      label.append('Разрешить запись')
-      item.appendChild(label)
+      actions.appendChild(bookingBtn)
+      item.appendChild(actions)
       list.appendChild(item)
     }
     card.appendChild(list)

@@ -24,12 +24,16 @@ export async function loadSlots(dateStr: string, scheduleRender: () => void): Pr
   state.error = null
   scheduleRender()
   try {
-    const data = await apiGet<{ date: string; slots: Slot[] }>(API.slots(dateStr))
+    const data = await apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(
+      API.slots(dateStr)
+    )
     if (state.selectedDate !== dateStr) return
     state.slots = data.slots
+    state.slotDurationMinutes = data.slot_duration_minutes ?? null
   } catch (e) {
     if (state.selectedDate !== dateStr) return
     state.slots = []
+    state.slotDurationMinutes = null
     state.error = e instanceof Error ? e.message : String(e)
   } finally {
     state.loading = false
@@ -262,7 +266,14 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
     nextBtn.type = 'button'
     nextBtn.setAttribute('aria-label', 'Следующий месяц')
     nextBtn.textContent = '›'
+    const today = new Date()
+    const maxCalendarDate = addDays(today, 31)
+    const nextMonthDate = new Date(y, m + 1, 1)
+    const isNextDisabled = nextMonthDate > maxCalendarDate
+    nextBtn.disabled = isNextDisabled
+    if (isNextDisabled) nextBtn.setAttribute('aria-disabled', 'true')
     nextBtn.addEventListener('click', () => {
+      if (isNextDisabled) return
       state.calendarMonth = new Date(y, m + 1, 1)
       state.selectedDate = null
       state.slots = []
@@ -349,6 +360,13 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
             slotsRow.appendChild(slotBtn)
           }
           calendarWrap.appendChild(slotsRow)
+          if (state.slotDurationMinutes != null) {
+            const dur = state.slotDurationMinutes
+            const hint = document.createElement('p')
+            hint.className = 'shell__hint'
+            hint.textContent = dur >= 60 ? `Окна по ${dur / 60} ч` : `Окна по ${dur} мин`
+            calendarWrap.appendChild(hint)
+          }
         }
       }
     }

@@ -7,6 +7,7 @@ export type MasterAppointment = {
   id: number
   client_name: string
   client_phone: string | null
+  client_telegram_id: number | null
   service_name: string
   datetime_local: string
   status: string
@@ -16,6 +17,7 @@ export type MasterClient = {
   id: number
   name: string
   phone: string | null
+  telegram_id: number | null
   booking_allowed: boolean
   future_appointments_count: number
 }
@@ -30,6 +32,7 @@ export type WorkScheduleItem = {
 export type MasterSettings = {
   booking_enabled: boolean
   timezone: string
+  slot_duration_minutes: number
   work_schedule: WorkScheduleItem[]
 }
 
@@ -46,6 +49,7 @@ export const state = {
   view: 'booking' as 'booking' | 'my',
   selectedDate: null as string | null,
   slots: [] as Slot[],
+  slotDurationMinutes: null as number | null,
   selectedSlotUtc: null as string | null,
   appointments: [] as Appointment[],
   loading: false,
@@ -58,8 +62,11 @@ export const state = {
   bookingPhone: '' as string,
   masterTab: 'schedule' as 'schedule' | 'clients' | 'settings' | 'blocked',
   masterScheduleDate: toYYYYMMDD(new Date()),
+  masterScheduleView: 'day' as 'day' | 'week',
   masterAppointments: [] as MasterAppointment[],
   masterSlots: [] as Slot[],
+  masterSlotsByDate: {} as Record<string, Slot[]>,
+  masterSlotDurationMinutes: null as number | null,
   masterClients: [] as MasterClient[],
   masterSettings: null as MasterSettings | null,
   masterBlockedSlots: [] as BlockedSlotItem[],

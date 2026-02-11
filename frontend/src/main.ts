@@ -19,6 +19,11 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
   try {
     const data = await apiGet<{ telegram_id: number; role: string }>(API.me)
     state.userRole = data.role
+    const params = new URLSearchParams(window.location.search)
+    if ((data.role === 'master' || data.role === 'admin') && params.get('view') !== 'master') {
+      switchToMasterView()
+      return
+    }
   } catch {
     state.userRole = null
   }

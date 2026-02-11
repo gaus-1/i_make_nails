@@ -7,7 +7,10 @@ export const API = {
   createAppointment: '/api/miniapp/appointments',
   cancelAppointment: (id: number) => `/api/miniapp/appointments/${id}/cancel`,
   rescheduleAppointment: (id: number) => `/api/miniapp/appointments/${id}/reschedule`,
-  masterAppointments: (date: string) => `/api/miniapp/master/appointments?date=${date}`,
+  masterAppointments: (date: string, dateTo?: string) =>
+    dateTo
+      ? `/api/miniapp/master/appointments?date=${date}&date_to=${dateTo}`
+      : `/api/miniapp/master/appointments?date=${date}`,
   masterClients: '/api/miniapp/master/clients',
   masterClient: (id: number) => `/api/miniapp/master/clients/${id}`,
   masterSettings: '/api/miniapp/master/settings',
@@ -32,6 +35,7 @@ declare global {
       WebApp?: {
         initData?: string
         initDataUnsafe?: { user?: { id: number; first_name?: string; last_name?: string } }
+        openLink?: (url: string) => void
       }
     }
   }
@@ -98,6 +102,21 @@ export async function apiPost<T>(url: string, body?: object): Promise<T> {
     method: 'POST',
     headers: authHeaders(),
     body: body ? JSON.stringify(body) : undefined,
+  })
+  const text = await r.text()
+  if (!r.ok) throw new Error(normalizeApiError(text))
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(normalizeApiError(text))
+  }
+}
+
+export async function apiPatch<T>(url: string, body: object): Promise<T> {
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(body),
   })
   const text = await r.text()
   if (!r.ok) throw new Error(normalizeApiError(text))

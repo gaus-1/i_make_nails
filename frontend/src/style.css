@@ -108,6 +108,34 @@ body {
   cursor: not-allowed;
 }
 
+.shell__pill--small {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.shell__pill--danger-outline {
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+}
+
+.shell__client-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.shell__day-card {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.shell__day-card-title {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
 .shell__main {
   display: flex;
   flex-direction: column;
@@ -317,6 +345,11 @@ body {
   transform: scale(0.95);
 }
 
+.shell__calendar-nav button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .shell__cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -347,8 +380,8 @@ body {
   border: none;
   border-radius: 12px;
   background: transparent;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-main);
   cursor: pointer;
   touch-action: manipulation;
