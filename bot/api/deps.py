@@ -132,15 +132,15 @@ def unauthorized(message: str, code: str = "invalid_init_data") -> NoReturn:
 
 
 def _parse_id_list(raw: str) -> set[int]:
-    """Parse comma/space-separated list of integer ids."""
+    """Parse comma/space-separated list of integer ids. Убирает кавычки из значений (Railway ENV)."""
     result: set[int] = set()
     for part in raw.replace(" ", "").split(","):
+        part = part.strip().strip("\"'")
         if not part:
             continue
         try:
             result.add(int(part))
         except ValueError:
-            # Некорректные значения игнорируем, чтобы не падать из-за env.
             continue
     return result
 

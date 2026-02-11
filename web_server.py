@@ -5,13 +5,17 @@ import os
 import subprocess
 import sys
 from collections.abc import Awaitable, Callable
+from datetime import time
 from pathlib import Path
 
 from aiohttp import web
 from loguru import logger
+from sqlalchemy import select
 
+from bot.api.deps import get_db
 from bot.api.miniapp.routes import setup_routes as setup_miniapp_routes
 from bot.config.settings import settings
+from bot.models import Master, WorkSchedule
 
 
 def _run_migrations() -> None:
@@ -29,6 +33,31 @@ def _run_migrations() -> None:
         raise SystemExit(result.returncode)
     if result.stdout.strip():
         logger.info("Migrations: {}", result.stdout.strip())
+
+
+def _ensure_single_master() -> None:
+    """Если в БД нет ни одного мастера — создать одного с дефолтным расписанием (для прода)."""
+    with get_db() as db:
+        if db.execute(select(Master).limit(1)).scalars().first() is not None:
+            return
+        master = Master(
+            timezone="Europe/Moscow",
+            booking_enabled=True,
+            slot_duration_minutes=120,
+        )
+        db.add(master)
+        db.flush()
+        for day in range(7):
+            db.add(
+                WorkSchedule(
+                    master_id=master.id,
+                    day_of_week=day,
+                    time_start=time(9, 0),
+                    time_end=time(18, 0),
+                )
+            )
+        db.commit()
+    logger.info("Created default master record")
 
 
 def _normalize_webhook_domain(raw: str) -> str:
@@ -178,6 +207,7 @@ def main() -> None:
         _seed_e2e_db()
     else:
         _run_migrations()
+        _ensure_single_master()
 
     app = asyncio.run(create_app())
     port = int(os.environ.get("PORT", "8000"))
