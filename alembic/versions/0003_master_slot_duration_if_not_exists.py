@@ -5,7 +5,7 @@ from sqlalchemy import inspect, text
 
 from alembic import op
 
-revision = "0003_master_slot_duration_if_not_exists"
+revision = "0003_slot_duration_master"
 down_revision = "0002_slot_duration_no_services"
 branch_labels = None
 depends_on = None
