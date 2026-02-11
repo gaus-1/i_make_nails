@@ -33,14 +33,12 @@ from bot.api.schemas import (
     MasterSettingsOut,
     MasterSettingsPatchIn,
     MeOut,
-    ServiceOut,
-    ServicesResponse,
     SlotOut,
     SlotsResponse,
     WorkScheduleItemOut,
 )
 from bot.database import SessionLocal
-from bot.models import Appointment, BlockedSlot, Client, Master, Service, WorkSchedule
+from bot.models import Appointment, BlockedSlot, Client, Master, WorkSchedule
 from bot.services import AppointmentService, ScheduleService
 from bot.services.exceptions import SlotBusyError
 
@@ -57,40 +55,22 @@ async def get_me(request: web.Request) -> web.Response:
     return web.json_response(body.model_dump(mode="json"))
 
 
-@routes.get("/api/miniapp/services")
-async def get_services(request: web.Request) -> web.Response:  # noqa: D401
-    """Return list of active services for the master."""
-    with SessionLocal() as db:
-        master_id = _get_single_master_id(db)
-        stmt = (
-            select(Service)
-            .where(Service.master_id == master_id, Service.is_active.is_(True))
-            .order_by(Service.sort_order, Service.id)
-        )
-        services = db.execute(stmt).scalars().all()
-        services_out = [ServiceOut.model_validate(svc) for svc in services]
-
-    body = ServicesResponse(services=services_out)
-    return web.json_response(body.model_dump(mode="json"))
-
-
 @routes.get("/api/miniapp/slots")
 async def get_free_slots(request: web.Request) -> web.Response:  # noqa: D401
-    """Return free slots for a given date and service."""
+    """Return free slots for a given date (one master, duration from master settings)."""
     target_date = parse_date("date", request.query.get("date"))
-    service_id = parse_int("service_id", request.query.get("service_id"))
 
     with SessionLocal() as db:
-        service = db.get(Service, service_id)
-        if service is None or not service.is_active:
-            not_found("Услуга не найдена.", code="service_not_found")
+        master_id = _get_single_master_id(db)
+        master = db.get(Master, master_id)
+        if master is None:
+            not_found("Мастер не найден.", code="master_not_found")
 
-        master_id = service.master_id
         schedule = ScheduleService(db)
         daily_slots = schedule.get_free_slots_for_date(
             master_id=master_id,
             target_date=target_date,
-            duration_minutes=service.duration_minutes,
+            duration_minutes=master.slot_duration_minutes,
         )
         slots = [SlotOut(start_utc_iso=slot.isoformat()) for slot in daily_slots.slots_utc]
 
@@ -131,10 +111,13 @@ async def get_my_appointments(request: web.Request) -> web.Response:
         )
         appointments = db.execute(stmt).scalars().all()
 
+        def _label(appt: Appointment) -> str:
+            return appt.service.name if appt.service else "Запись"
+
         items = [
             AppointmentOut(
                 id=appt.id,
-                service_name=appt.service.name,
+                label=_label(appt),
                 datetime_start_utc=appt.datetime_start,
                 status=appt.status,
                 source=appt.source,
@@ -184,16 +167,11 @@ async def create_appointment(request: web.Request) -> web.Response:
                 "Для вас онлайн-запись недоступна. Свяжитесь с мастером.", code="client_blocked"
             )
 
-        service = db.get(Service, data.service_id)
-        if service is None or not service.is_active:
-            not_found("Услуга не найдена.", code="service_not_found")
-
         svc = AppointmentService(db)
         try:
             appointment = svc.create(
                 master_id=master_id,
                 client_id=client.id,
-                service_id=service.id,
                 datetime_start_utc=data.slot_start_utc,
             )
         except SlotBusyError:
@@ -204,7 +182,7 @@ async def create_appointment(request: web.Request) -> web.Response:
 
         item = AppointmentOut(
             id=appointment.id,
-            service_name=service.name,
+            label="Запись",
             datetime_start_utc=appointment.datetime_start,
             status=appointment.status,
             source=appointment.source,
@@ -246,9 +224,10 @@ async def cancel_appointment(request: web.Request) -> web.Response:
         db.commit()
         db.refresh(appt)
 
+        label = appt.service.name if appt.service else "Запись"
         item = AppointmentOut(
             id=appt.id,
-            service_name=appt.service.name,
+            label=label,
             datetime_start_utc=appt.datetime_start,
             status=appt.status,
             source=appt.source,
@@ -301,9 +280,10 @@ async def reschedule_appointment(request: web.Request) -> web.Response:
                 code="slot_busy",
             )
 
+        label = appt.service.name if appt.service else "Запись"
         item = AppointmentOut(
             id=appt.id,
-            service_name=appt.service.name,
+            label=label,
             datetime_start_utc=appt.datetime_start,
             status=appt.status,
             source=appt.source,
@@ -353,7 +333,7 @@ async def get_master_appointments(request: web.Request) -> web.Response:
                     id=appt.id,
                     client_name=appt.client.name if appt.client else "—",
                     client_phone=appt.client.phone if appt.client else None,
-                    service_name=appt.service.name,
+                    service_name=appt.service.name if appt.service else "Запись",
                     datetime_local=local_start,
                     status=appt.status,
                 )

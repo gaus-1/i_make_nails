@@ -6,7 +6,6 @@ import {
   apiPost,
   getTelegramUser,
   type Appointment,
-  type Service,
   type Slot,
 } from './api'
 import { state } from './state'
@@ -20,31 +19,11 @@ import {
   toYYYYMMDD,
 } from './utils'
 
-export async function loadServices(scheduleRender: () => void): Promise<void> {
-  state.servicesLoading = true
-  state.error = null
-  scheduleRender()
-  try {
-    const data = await apiGet<{ services: Service[] }>(API.services)
-    state.services = data.services
-    if (state.services.length && !state.selectedServiceId)
-      state.selectedServiceId = state.services[0].id
-  } catch (e) {
-    state.error = e instanceof Error ? e.message : String(e)
-  }
-  state.servicesLoading = false
-  scheduleRender()
-}
-
-export async function loadSlots(
-  dateStr: string,
-  serviceId: number,
-  scheduleRender: () => void
-): Promise<void> {
+export async function loadSlots(dateStr: string, scheduleRender: () => void): Promise<void> {
   state.loading = true
   scheduleRender()
   try {
-    const data = await apiGet<{ date: string; slots: Slot[] }>(API.slots(dateStr, serviceId))
+    const data = await apiGet<{ date: string; slots: Slot[] }>(API.slots(dateStr))
     state.slots = data.slots
   } catch (e) {
     state.slots = []
@@ -183,7 +162,7 @@ function renderMyAppointments(main: HTMLElement, scheduleRender: () => void): vo
           item.className = 'shell__appointment-item'
           const name = document.createElement('div')
           name.className = 'shell__appointment-name'
-          name.textContent = a.service_name
+          name.textContent = a.label
           const meta = document.createElement('div')
           meta.className = 'shell__appointment-meta'
           const dt = new Date(a.datetime_start_utc)
@@ -214,13 +193,12 @@ function renderMyAppointments(main: HTMLElement, scheduleRender: () => void): vo
             rescheduleBtn.addEventListener('click', () => {
               state.rescheduleAppointmentId = a.id
               state.view = 'booking'
-              state.selectedServiceId = state.services.find((s) => s.name === a.service_name)?.id ?? state.services[0]?.id ?? null
               const apptDate = new Date(a.datetime_start_utc)
               state.selectedDate = toYYYYMMDD(apptDate)
               state.calendarMonth = new Date(apptDate.getFullYear(), apptDate.getMonth(), 1)
               state.selectedSlotUtc = null
               state.slots = []
-              if (state.selectedServiceId) loadSlots(state.selectedDate, state.selectedServiceId, scheduleRender)
+              loadSlots(state.selectedDate, scheduleRender)
               scheduleRender()
             })
             item.appendChild(rescheduleBtn)
@@ -245,66 +223,6 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   const layout = document.createElement('section')
   layout.className = 'shell__layout'
 
-  const sectionService = document.createElement('section')
-  sectionService.className = 'shell__card shell__section'
-  const h2Service = document.createElement('h2')
-  h2Service.className = 'shell__section-title'
-  h2Service.textContent = 'Услуга'
-  const capService = document.createElement('p')
-  capService.className = 'shell__section-caption'
-  capService.textContent = 'Выберите вид обработки и покрытия.'
-  sectionService.appendChild(h2Service)
-  sectionService.appendChild(capService)
-  const servicesWrap = document.createElement('div')
-  servicesWrap.className = 'shell__services-wrap'
-  if (state.servicesLoading) {
-    const p = document.createElement('p')
-    p.className = 'shell__section-caption'
-    p.textContent = 'Загрузка услуг…'
-    sectionService.appendChild(p)
-  } else if (state.services.length === 0) {
-    const wrap = document.createElement('div')
-    wrap.className = 'shell__error-retry'
-    const isTelegramIdError =
-      (state.error?.includes('Telegram id is required') || state.error?.includes('X-Telegram-Id')) ?? false
-    if (state.error && !isTelegramIdError) {
-      const err = document.createElement('p')
-      err.className = 'shell__section-caption'
-      err.textContent = state.error
-      wrap.appendChild(err)
-    }
-    const retryBtn = document.createElement('button')
-    retryBtn.type = 'button'
-    retryBtn.className = 'shell__pill'
-    retryBtn.textContent = 'Повторить'
-    retryBtn.addEventListener('click', () => loadServices(scheduleRender))
-    wrap.appendChild(retryBtn)
-    sectionService.appendChild(wrap)
-  } else {
-    for (const s of state.services) {
-      const btn = document.createElement('button')
-      btn.className = 'service-card' + (state.selectedServiceId === s.id ? ' service-card--active' : '')
-      btn.type = 'button'
-      btn.dataset.serviceId = String(s.id)
-      const name = document.createElement('div')
-      name.className = 'service-card__name'
-      name.textContent = s.name
-      btn.appendChild(name)
-      btn.addEventListener('click', () => {
-        state.selectedServiceId = s.id
-        state.selectedDate = null
-        state.slots = []
-        state.selectedSlotUtc = null
-        if (!state.rescheduleAppointmentId) state.success = null
-        scheduleRender()
-        if (state.selectedServiceId) loadSlots(toYYYYMMDD(new Date()), state.selectedServiceId, scheduleRender)
-      })
-      servicesWrap.appendChild(btn)
-    }
-  }
-  sectionService.appendChild(servicesWrap)
-  layout.appendChild(sectionService)
-
   const sectionSlot = document.createElement('section')
   sectionSlot.className = 'shell__card shell__section'
   const h2Slot = document.createElement('h2')
@@ -312,18 +230,13 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   h2Slot.textContent = 'Дата и время'
   const capSlot = document.createElement('p')
   capSlot.className = 'shell__section-caption'
-  capSlot.textContent = 'Свободные окошки из расписания мастера.'
+  capSlot.textContent = 'Выберите день — под календарём появятся свободные слоты.'
   sectionSlot.appendChild(h2Slot)
   sectionSlot.appendChild(capSlot)
 
   const calendarWrap = document.createElement('div')
   calendarWrap.className = 'shell__calendar-wrap'
-  if (!state.selectedServiceId) {
-    const hint = document.createElement('p')
-    hint.className = 'shell__section-caption'
-    hint.textContent = 'Сначала выберите услугу.'
-    calendarWrap.appendChild(hint)
-  } else {
+  {
     const calMonth = state.calendarMonth
     const y = calMonth.getFullYear()
     const m = calMonth.getMonth()
@@ -402,7 +315,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         state.selectedDate = dateStr
         state.selectedSlotUtc = null
         scheduleRender()
-        if (state.selectedServiceId) loadSlots(dateStr, state.selectedServiceId, scheduleRender)
+        loadSlots(dateStr, scheduleRender)
       })
       grid.appendChild(cell)
     }
@@ -447,11 +360,9 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
 
   const summary = document.createElement('section')
   summary.className = 'shell__card shell__summary'
-  const serviceName =
-    state.services.find((s) => s.id === state.selectedServiceId)?.name ?? '—'
   const summaryTitle = document.createElement('div')
   summaryTitle.className = 'shell__summary-title'
-  summaryTitle.textContent = serviceName
+  summaryTitle.textContent = 'Запись'
   const summaryMeta = document.createElement('div')
   summaryMeta.className = 'shell__summary-meta'
   if (state.selectedDate && state.selectedSlotUtc) {
@@ -468,7 +379,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   confirmBtn.className = 'shell__pill shell__pill--primary'
   confirmBtn.type = 'button'
   const canConfirm =
-    state.selectedServiceId && state.selectedSlotUtc && !state.loading && !state.submitting
+    state.selectedSlotUtc && !state.loading && !state.submitting
   confirmBtn.disabled = !canConfirm
   confirmBtn.textContent = state.submitting
     ? 'Подождите…'
@@ -476,7 +387,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
       ? 'Перенести запись'
       : 'Подтвердить запись'
   confirmBtn.addEventListener('click', async () => {
-    if (!state.selectedServiceId || !state.selectedSlotUtc) return
+    if (!state.selectedSlotUtc) return
     const user = getTelegramUser()
     if (!user) {
       state.error = 'Откройте приложение в Telegram для записи.'
@@ -499,7 +410,6 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
           telegram_id: user.id,
           name: user.name,
           phone: null,
-          service_id: state.selectedServiceId,
           slot_start_utc: state.selectedSlotUtc,
         })
         state.success = 'Запись создана. Ждём вас!'

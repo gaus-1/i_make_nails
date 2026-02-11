@@ -15,7 +15,9 @@ class Appointment(TimestampMixin, Base):
 
     master_id: Mapped[int] = mapped_column(ForeignKey("master.id", ondelete="CASCADE"))
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id", ondelete="CASCADE"))
-    service_id: Mapped[int] = mapped_column(ForeignKey("service.id", ondelete="RESTRICT"))
+    service_id: Mapped[int | None] = mapped_column(
+        ForeignKey("service.id", ondelete="SET NULL"), nullable=True
+    )
 
     datetime_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     datetime_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -31,7 +33,7 @@ class Appointment(TimestampMixin, Base):
     )
 
     client: Mapped["Client"] = relationship(back_populates="appointments")
-    service: Mapped["Service"] = relationship(back_populates="appointments")
+    service: Mapped["Service | None"] = relationship(back_populates="appointments")
     master: Mapped["Master"] = relationship(back_populates="appointments")
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, String
+from sqlalchemy import BigInteger, Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.models.base import Base, TimestampMixin
@@ -15,6 +15,7 @@ class Master(TimestampMixin, Base):
 
     timezone: Mapped[str] = mapped_column(String(64), default="Europe/Moscow")
     booking_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    slot_duration_minutes: Mapped[int] = mapped_column(Integer, default=120)
 
     services: Mapped[list["Service"]] = relationship(back_populates="master")
     clients: Mapped[list["Client"]] = relationship(back_populates="master")

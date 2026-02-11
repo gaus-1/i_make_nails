@@ -22,13 +22,9 @@ test.describe('Клиент', () => {
     await expect(noRecords.or(list)).toBeVisible({ timeout: 5000 })
   })
 
-  test('запись: услуга → календарь → слоты', async ({ page }) => {
+  test('запись: календарь → дата → слоты', async ({ page }) => {
     await page.getByRole('button', { name: 'Записаться' }).click()
-    await expect(page.getByRole('heading', { name: 'Услуга' })).toBeVisible({ timeout: 5000 })
-    const serviceCard = page.locator('.service-card').first()
-    await serviceCard.waitFor({ state: 'visible', timeout: 10000 })
-    await serviceCard.click()
-    await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible({ timeout: 5000 })
     const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other)').first()
     await calCell.waitFor({ state: 'visible', timeout: 3000 })
     await calCell.click()
@@ -43,7 +39,7 @@ test.describe('Клиент', () => {
     await expect(page.getByRole('heading', { name: 'Мои записи' })).toBeVisible({ timeout: 5000 })
     await page.getByRole('button', { name: 'Открыть запись' }).click()
     await expect(page.getByRole('button', { name: 'Записаться' })).toHaveClass(/shell__tab--active/)
-    await expect(page.getByRole('heading', { name: 'Услуга' })).toBeVisible({ timeout: 3000 })
+    await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible({ timeout: 3000 })
   })
 
   test('в Мои записи есть кнопка Обновить', async ({ page }) => {
@@ -61,10 +57,10 @@ test.describe('Клиент', () => {
     await expect(page.getByRole('button', { name: 'Неделя' })).toHaveClass(/shell__period-tab--active/)
   })
 
-  test('форма записи: услуга и дата/время без поля телефона', async ({ page }) => {
+  test('форма записи: календарь и слоты, без телефона', async ({ page }) => {
     await page.getByRole('button', { name: 'Записаться' }).click()
-    await expect(page.getByRole('heading', { name: 'Услуга' })).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible({ timeout: 3000 })
+    await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.shell__cal-grid')).toBeVisible({ timeout: 3000 })
     await expect(page.locator('input[type="tel"]')).not.toBeVisible()
   })
 })

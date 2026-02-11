@@ -37,7 +37,7 @@ def setup_in_memory_session(monkeypatch: pytest.MonkeyPatch) -> Session:
 async def test_full_client_flow_create_and_list_appointments(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Happy path: клиент получает услуги, слоты, создаёт запись и видит её в /appointments/my."""
+    """Happy path: клиент получает слоты по дате, создаёт запись и видит её в /appointments/my."""
     db = setup_in_memory_session(monkeypatch)
 
     # настройка env: мастер и dev-режим (X-Telegram-Id без initData)
@@ -45,7 +45,11 @@ async def test_full_client_flow_create_and_list_appointments(
     monkeypatch.setattr(settings, "admin_telegram_ids", "222")
     monkeypatch.setattr(settings, "miniapp_auth", "dev")
 
-    master = Master(timezone="Europe/Moscow", booking_enabled=True)
+    master = Master(
+        timezone="Europe/Moscow",
+        booking_enabled=True,
+        slot_duration_minutes=90,
+    )
     db.add(master)
     db.flush()
 
@@ -58,16 +62,6 @@ async def test_full_client_flow_create_and_list_appointments(
         time_end=time(14, 0),
     )
     db.add(ws)
-
-    service = Service(
-        master_id=master.id,
-        name="Аппаратный маникюр",
-        duration_minutes=90,
-        price_rub=None,
-        is_active=True,
-        sort_order=0,
-    )
-    db.add(service)
     db.commit()
 
     app = create_test_app(db)
@@ -76,17 +70,10 @@ async def test_full_client_flow_create_and_list_appointments(
     await client.start_server()
 
     try:
-        # 1. получаем услуги
-        resp = await client.get("/api/miniapp/services")
-        assert resp.status == 200
-        services_payload = await resp.json()
-        assert services_payload["services"][0]["name"] == "Аппаратный маникюр"
-        service_id = services_payload["services"][0]["id"]
-
-        # 2. получаем свободные слоты
+        # 1. получаем свободные слоты по дате
         resp = await client.get(
             "/api/miniapp/slots",
-            params={"date": today.isoformat(), "service_id": str(service_id)},
+            params={"date": today.isoformat()},
         )
         assert resp.status == 200
         slots_payload = await resp.json()
@@ -94,7 +81,7 @@ async def test_full_client_flow_create_and_list_appointments(
         assert slots_payload["slots"]
         first_slot_iso = slots_payload["slots"][0]["start_utc_iso"]
 
-        # 3. создаём запись (telegram_id из заголовка в dev)
+        # 2. создаём запись (telegram_id из заголовка в dev)
         telegram_id = 555
         resp = await client.post(
             "/api/miniapp/appointments",
@@ -103,15 +90,14 @@ async def test_full_client_flow_create_and_list_appointments(
                 "telegram_id": telegram_id,
                 "name": "Тестовый клиент",
                 "phone": "+79990000000",
-                "service_id": service_id,
                 "slot_start_utc": first_slot_iso,
             },
         )
         assert resp.status == 200
         appointment_payload = await resp.json()
-        assert appointment_payload["service_name"] == "Аппаратный маникюр"
+        assert appointment_payload["label"] == "Запись"
 
-        # 4. клиент видит свою запись в /appointments/my
+        # 3. клиент видит свою запись в /appointments/my
         resp = await client.get(
             "/api/miniapp/appointments/my",
             headers={"X-Telegram-Id": str(telegram_id)},
@@ -119,7 +105,7 @@ async def test_full_client_flow_create_and_list_appointments(
         assert resp.status == 200
         my_payload = await resp.json()
         assert len(my_payload["appointments"]) == 1
-        assert my_payload["appointments"][0]["service_name"] == "Аппаратный маникюр"
+        assert my_payload["appointments"][0]["label"] == "Запись"
     finally:
         await client.close()
 
@@ -135,24 +121,25 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
     monkeypatch.setattr(settings, "admin_telegram_ids", "222")
     monkeypatch.setattr(settings, "miniapp_auth", "dev")
 
-    master = Master(timezone="Europe/Moscow", booking_enabled=True)
+    master = Master(
+        timezone="Europe/Moscow",
+        booking_enabled=True,
+        slot_duration_minutes=120,
+    )
     db.add(master)
     db.flush()
 
     client_model = Client(master_id=master.id, name="Клиент", phone=None, telegram_id=777)
     db.add(client_model)
-
-    service = Service(master_id=master.id, name="Комбинированный маникюр", duration_minutes=120)
-    db.add(service)
     db.flush()
 
-    # назначаем одну запись на сегодня
+    # назначаем одну запись на сегодня (без услуги)
     today = date(2026, 2, 10)
     start_local = datetime(2026, 2, 10, 11, 0, tzinfo=UTC)
     appt = Appointment(
         master_id=master.id,
         client_id=client_model.id,
-        service_id=service.id,
+        service_id=None,
         datetime_start=start_local,
         datetime_end=start_local + timedelta(minutes=120),
         status="confirmed",
@@ -184,7 +171,7 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
         payload = await resp.json()
         assert payload["date"] == today.isoformat()
         assert len(payload["appointments"]) == 1
-        assert payload["appointments"][0]["service_name"] == "Комбинированный маникюр"
+        assert payload["appointments"][0]["service_name"] == "Запись"
     finally:
         await client.close()
 

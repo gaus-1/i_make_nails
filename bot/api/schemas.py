@@ -14,22 +14,6 @@ class MeOut(BaseModel):
     role: str = Field(..., description="'admin' | 'master' | 'client'")
 
 
-class ServiceOut(BaseModel):
-    """Public representation of a service in mini-app."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
-    duration_minutes: int
-
-
-class ServicesResponse(BaseModel):
-    """Response wrapper for list of services."""
-
-    services: list[ServiceOut]
-
-
 class SlotOut(BaseModel):
     """Single free slot for booking."""
 
@@ -52,7 +36,7 @@ class AppointmentOut(BaseModel):
     """Public representation of an appointment in mini-app."""
 
     id: int
-    service_name: str
+    label: str = Field(..., description="Подпись записи (дата/время или «Запись»).")
     datetime_start_utc: datetime
     status: str
     source: str
@@ -64,7 +48,6 @@ class AppointmentCreateIn(BaseModel):
     telegram_id: int = Field(..., description="Telegram ID клиента (временно, до initData).")
     name: str = Field(..., max_length=200, description="Имя клиента.")
     phone: str | None = Field(None, max_length=30, description="Телефон клиента.")
-    service_id: int
     slot_start_utc: datetime = Field(
         ...,
         description="Начало выбранного слота в UTC, ISO 8601.",

@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from bot.models import Appointment, Base, Client, Master, Service
+from bot.models import Appointment, Base, Client, Master
 from bot.services.appointment_service import AppointmentService
 from bot.services.exceptions import SlotBusyError
 
@@ -14,16 +14,16 @@ def setup_in_memory_db() -> Session:
     SessionLocal = sessionmaker(bind=engine)
     db = SessionLocal()
 
-    master = Master(timezone="Europe/Moscow", booking_enabled=True)
+    master = Master(
+        timezone="Europe/Moscow",
+        booking_enabled=True,
+        slot_duration_minutes=60,
+    )
     db.add(master)
     db.flush()
 
     client = Client(master_id=master.id, name="Test Client")
     db.add(client)
-    db.flush()
-
-    service = Service(master_id=master.id, name="Аппаратный маникюр", duration_minutes=60)
-    db.add(service)
     db.commit()
 
     return db
@@ -31,12 +31,10 @@ def setup_in_memory_db() -> Session:
 
 def test_create_appointment_and_prevent_overlap() -> None:
     db = setup_in_memory_db()
-    service = db.query(Service).first()
     master = db.query(Master).first()
     client = db.query(Client).first()
-    assert service and master and client
+    assert master and client
 
-    service_id = service.id
     master_id = master.id
     client_id = client.id
 
@@ -45,7 +43,6 @@ def test_create_appointment_and_prevent_overlap() -> None:
     appt1 = svc.create(
         master_id=master_id,
         client_id=client_id,
-        service_id=service_id,
         datetime_start_utc=start1,
     )
 
@@ -58,7 +55,6 @@ def test_create_appointment_and_prevent_overlap() -> None:
         svc.create(
             master_id=master_id,
             client_id=client_id,
-            service_id=service_id,
             datetime_start_utc=start_overlap,
         )
     except SlotBusyError:
@@ -71,7 +67,6 @@ def test_create_appointment_and_prevent_overlap() -> None:
     appt2 = svc.create(
         master_id=master_id,
         client_id=client_id,
-        service_id=service_id,
         datetime_start_utc=start2,
     )
     assert appt2.id != appt1.id

@@ -85,36 +85,33 @@ async def create_app() -> web.Application:
 
 
 def _seed_e2e_db() -> None:
-    """Заполнить in-memory БД для E2E: один мастер, услуга, рабочее расписание."""
+    """Заполнить БД для E2E: один мастер, рабочее расписание. Для SQLite схему пересоздаём."""
     from datetime import time
 
     from sqlalchemy import select
     from sqlalchemy.orm import Session
 
     from bot.database.engine import SessionLocal, engine
-    from bot.models import Base, Master, Service, WorkSchedule
+    from bot.models import Base, Master, WorkSchedule
 
+    # SQLite: пересоздать схему по текущим моделям (E2E может запускаться с уже существующим файлом)
+    if "sqlite" in (engine.url.drivername or ""):
+        Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db: Session = SessionLocal()
     try:
-        # Уже есть данные (например перезапуск с тем же e2e.db) — не дублировать
         if db.execute(select(Master).limit(1)).scalars().first() is not None:
             return
     except Exception:
         pass
     try:
-        master = Master(timezone="Europe/Moscow", booking_enabled=True)
+        master = Master(
+            timezone="Europe/Moscow",
+            booking_enabled=True,
+            slot_duration_minutes=120,
+        )
         db.add(master)
         db.flush()
-        db.add(
-            Service(
-                master_id=master.id,
-                name="Аппаратный маникюр",
-                duration_minutes=90,
-                is_active=True,
-                sort_order=0,
-            )
-        )
         for day in range(7):
             db.add(
                 WorkSchedule(

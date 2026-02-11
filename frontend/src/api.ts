@@ -2,9 +2,7 @@
 
 export const API = {
   me: '/api/miniapp/me',
-  services: '/api/miniapp/services',
-  slots: (date: string, serviceId: number) =>
-    `/api/miniapp/slots?date=${date}&service_id=${serviceId}`,
+  slots: (date: string) => `/api/miniapp/slots?date=${date}`,
   myAppointments: '/api/miniapp/appointments/my',
   createAppointment: '/api/miniapp/appointments',
   cancelAppointment: (id: number) => `/api/miniapp/appointments/${id}/cancel`,
@@ -19,11 +17,10 @@ export const API = {
   masterBlockedSlot: (id: number) => `/api/miniapp/master/blocked-slots/${id}`,
 }
 
-export type Service = { id: number; name: string; duration_minutes: number }
 export type Slot = { start_utc_iso: string }
 export type Appointment = {
   id: number
-  service_name: string
+  label: string
   datetime_start_utc: string
   status: string
   source: string

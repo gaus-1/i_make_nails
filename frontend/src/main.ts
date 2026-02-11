@@ -5,7 +5,7 @@ import './style.css'
 import { apiGet } from './api'
 import { API } from './api'
 import { state } from './state'
-import { loadServices, renderClient } from './render-client'
+import { renderClient } from './render-client'
 import { initMaster, renderMaster } from './render-master'
 
 const app = document.querySelector<HTMLDivElement>('#app')
@@ -92,7 +92,6 @@ initAppView()
 render()
 if (state.appView === 'client') {
   loadMe(render)
-  loadServices(render)
 } else {
   initMaster(render)
 }

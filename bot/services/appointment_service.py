@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bot.models import Appointment, Client, Master, Service
+from bot.models import Appointment, Client, Master
 from bot.services.exceptions import AppointmentNotFoundError, SlotBusyError
 
 
@@ -47,22 +47,22 @@ class AppointmentService:
         *,
         master_id: int,
         client_id: int,
-        service_id: int,
         datetime_start_utc: datetime,
+        service_id: int | None = None,
     ) -> Appointment:
         """Create a new appointment after checking that the time slot is free."""
-        service = self.db.get(Service, service_id)
         master = self.db.get(Master, master_id)
         client = self.db.get(Client, client_id)
 
-        if service is None or master is None or client is None:
-            msg = "Invalid master, client or service id"
+        if master is None or client is None:
+            msg = "Invalid master or client id"
             raise ValueError(msg)
 
         if datetime_start_utc.tzinfo is None:
             datetime_start_utc = datetime_start_utc.replace(tzinfo=UTC)
 
-        datetime_end_utc = datetime_start_utc + timedelta(minutes=service.duration_minutes)
+        duration_minutes = master.slot_duration_minutes
+        datetime_end_utc = datetime_start_utc + timedelta(minutes=duration_minutes)
 
         self._check_slot_free(
             master_id=master.id, start_utc=datetime_start_utc, end_utc=datetime_end_utc
@@ -71,7 +71,7 @@ class AppointmentService:
         appointment = Appointment(
             master_id=master.id,
             client_id=client.id,
-            service_id=service.id,
+            service_id=service_id,
             datetime_start=datetime_start_utc,
             datetime_end=datetime_end_utc,
             status="confirmed",
