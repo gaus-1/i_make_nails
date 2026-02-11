@@ -12,7 +12,13 @@ _db_url = settings.database_url
 if _db_url.startswith("postgresql://") and "+psycopg" not in _db_url:
     _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-engine = create_engine(_db_url, pool_pre_ping=True)
+# Пул под одновременные запросы мини-аппа (по умолчанию 5+10 мало при пиках)
+engine = create_engine(
+    _db_url,
+    pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=30,
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 
