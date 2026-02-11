@@ -2,6 +2,8 @@
 
 import asyncio
 import os
+import subprocess
+import sys
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -10,6 +12,23 @@ from loguru import logger
 
 from bot.api.miniapp.routes import setup_routes as setup_miniapp_routes
 from bot.config.settings import settings
+
+
+def _run_migrations() -> None:
+    """Применить миграции Alembic перед стартом (для Railway и др.)."""
+    root = Path(__file__).resolve().parent
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        logger.error("alembic upgrade head failed: {} {}", result.stdout, result.stderr)
+        raise SystemExit(result.returncode)
+    if result.stdout.strip():
+        logger.info("Migrations: {}", result.stdout.strip())
 
 
 def _normalize_webhook_domain(raw: str) -> str:
@@ -157,6 +176,8 @@ def _seed_e2e_db() -> None:
 def main() -> None:
     if os.environ.get("E2E_SERVER") == "1":
         _seed_e2e_db()
+    else:
+        _run_migrations()
 
     app = asyncio.run(create_app())
     port = int(os.environ.get("PORT", "8000"))
