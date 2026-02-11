@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Pydantic schemas for HTTP API responses and requests."""
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -154,3 +154,22 @@ class MasterSettingsPatchIn(BaseModel):
     booking_enabled: bool | None = None
     timezone: str | None = None
     work_schedule: list[WorkScheduleItemIn] | None = None
+
+
+class BlockedSlotOut(BaseModel):
+    """Один заблокированный период для мастера."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    date_start: date
+    date_end: date
+    reason: str | None
+
+
+class BlockedSlotCreateIn(BaseModel):
+    """Создание блокировки дат."""
+
+    date_start: date = Field(..., description="Начало периода (включительно).")
+    date_end: date | None = Field(None, description="Конец периода (включительно). Одна дата, если не указано.")
+    reason: str | None = Field(None, max_length=500)

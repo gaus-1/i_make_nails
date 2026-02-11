@@ -10,6 +10,7 @@ from aiohttp import web
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from bot.api.telegram_auth import get_user_id_from_validated, validate_init_data
 from bot.config.settings import settings
 from bot.database.engine import SessionLocal
 from bot.models import Master
@@ -75,6 +76,24 @@ def get_telegram_id(request: web.Request) -> int:
         bad_request(msg, code="invalid_telegram_id", exc=exc)
 
 
+def get_telegram_id_from_request(request: web.Request) -> int:
+    """Идентификация пользователя: при наличии initData — проверка подписи; иначе в dev — X-Telegram-Id/query."""
+    init_data_raw = request.headers.get("X-Telegram-Init-Data")
+    if init_data_raw and settings.miniapp_auth != "dev":
+        validated = validate_init_data(
+            init_data_raw,
+            settings.telegram_bot_token,
+            ttl_seconds=settings.init_data_ttl_seconds,
+        )
+        if validated is None:
+            unauthorized("Недействительные данные сессии. Откройте приложение в Telegram.", code="invalid_init_data")
+        user_id = get_user_id_from_validated(validated)
+        if user_id is None:
+            unauthorized("Не удалось определить пользователя.", code="invalid_init_data")
+        return user_id
+    return get_telegram_id(request)
+
+
 def _get_single_master_id(db: Session) -> int:
     """Return id of the single master in v1 or raise if not found."""
     master = db.execute(select(Master)).scalars().first()
@@ -102,6 +121,11 @@ def conflict(message: str, code: str = "conflict") -> NoReturn:
 def forbidden(message: str, code: str = "forbidden") -> NoReturn:
     """Raise HTTP 403 with a unified JSON error body."""
     raise _json_http_error(web.HTTPForbidden, message=message, code=code)
+
+
+def unauthorized(message: str, code: str = "invalid_init_data") -> NoReturn:
+    """Raise HTTP 401 with a unified JSON error body."""
+    raise _json_http_error(web.HTTPUnauthorized, message=message, code=code)
 
 
 def _parse_id_list(raw: str) -> set[int]:
@@ -140,10 +164,10 @@ def require_master(db: Session, request: web.Request) -> int:
     """Ensure that current telegram user is a master/admin and return master id.
 
     v1: мы работаем с одним мастером, поэтому возвращаем id единственного мастера.
-    В будущем здесь можно будет искать master_id по telegram_id.
+    Использует get_telegram_id_from_request (initData или в dev header/query).
     """
 
-    telegram_id = get_telegram_id(request)
+    telegram_id = get_telegram_id_from_request(request)
     role = resolve_telegram_role(telegram_id)
     if role not in {"MASTER", "ADMIN"}:
         forbidden("Доступ разрешён только мастеру.", code="master_required")

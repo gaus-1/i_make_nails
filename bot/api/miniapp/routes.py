@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from aiohttp import web
@@ -11,7 +11,7 @@ from bot.api.deps import (
     _get_single_master_id,
     conflict,
     forbidden,
-    get_telegram_id,
+    get_telegram_id_from_request,
     not_found,
     parse_date,
     parse_int,
@@ -22,6 +22,8 @@ from bot.api.schemas import (
     AppointmentOut,
     AppointmentRescheduleIn,
     AppointmentsListResponse,
+    BlockedSlotCreateIn,
+    BlockedSlotOut,
     ClientOut,
     ClientPatchIn,
     ClientsListResponse,
@@ -36,7 +38,7 @@ from bot.api.schemas import (
     WorkScheduleItemOut,
 )
 from bot.database import SessionLocal
-from bot.models import Appointment, Client, Master, Service, WorkSchedule
+from bot.models import Appointment, BlockedSlot, Client, Master, Service, WorkSchedule
 from bot.services import AppointmentService, ScheduleService
 from bot.services.exceptions import SlotBusyError
 
@@ -87,7 +89,7 @@ async def get_free_slots(request: web.Request) -> web.Response:  # noqa: D401
 @routes.get("/api/miniapp/appointments/my")
 async def get_my_appointments(request: web.Request) -> web.Response:
     """Return list of appointments for current client."""
-    telegram_id = get_telegram_id(request)
+    telegram_id = get_telegram_id_from_request(request)
 
     with SessionLocal() as db:
         master_id = _get_single_master_id(db)
@@ -134,7 +136,8 @@ async def get_my_appointments(request: web.Request) -> web.Response:
 
 @routes.post("/api/miniapp/appointments")
 async def create_appointment(request: web.Request) -> web.Response:
-    """Create a new appointment for client in mini-app."""
+    """Create a new appointment for client in mini-app. telegram_id только из проверенного initData/header."""
+    telegram_id = get_telegram_id_from_request(request)
     payload_raw = await request.json()
     data = AppointmentCreateIn.model_validate(payload_raw)
 
@@ -150,14 +153,14 @@ async def create_appointment(request: web.Request) -> web.Response:
 
         client_stmt = select(Client).where(
             Client.master_id == master_id,
-            Client.telegram_id == data.telegram_id,
+            Client.telegram_id == telegram_id,
         )
         client = db.execute(client_stmt).scalars().first()
 
         if client is None:
             client = Client(
                 master_id=master_id,
-                telegram_id=data.telegram_id,
+                telegram_id=telegram_id,
                 name=data.name,
                 phone=data.phone,
             )
@@ -201,7 +204,7 @@ async def create_appointment(request: web.Request) -> web.Response:
 @routes.post("/api/miniapp/appointments/{appointment_id}/cancel")
 async def cancel_appointment(request: web.Request) -> web.Response:
     """Cancel future appointment for current client."""
-    telegram_id = get_telegram_id(request)
+    telegram_id = get_telegram_id_from_request(request)
     appointment_id = parse_int("appointment_id", request.match_info.get("appointment_id"))
 
     with SessionLocal() as db:
@@ -240,7 +243,7 @@ async def cancel_appointment(request: web.Request) -> web.Response:
 @routes.post("/api/miniapp/appointments/{appointment_id}/reschedule")
 async def reschedule_appointment(request: web.Request) -> web.Response:
     """Reschedule existing appointment for current client."""
-    telegram_id = get_telegram_id(request)
+    telegram_id = get_telegram_id_from_request(request)
     appointment_id = parse_int("appointment_id", request.match_info.get("appointment_id"))
     payload_raw = await request.json()
     data = AppointmentRescheduleIn.model_validate(payload_raw)
@@ -498,6 +501,90 @@ async def patch_master_settings(request: web.Request) -> web.Response:
         work_schedule=[WorkScheduleItemOut.model_validate(ws) for ws in work_schedule],
     )
     return web.json_response(body.model_dump(mode="json"))
+
+
+@routes.get("/api/miniapp/master/blocked-slots")
+async def get_master_blocked_slots(request: web.Request) -> web.Response:
+    """Список блокировок мастера в диапазоне дат."""
+    date_from = parse_date("date_from", request.query.get("date_from"))
+    date_to = parse_date("date_to", request.query.get("date_to"))
+    if date_to < date_from:
+        conflict("date_to должен быть не раньше date_from.", code="invalid_range")
+
+    with SessionLocal() as db:
+        master_id = require_master(db, request)
+        stmt = (
+            select(BlockedSlot)
+            .where(
+                BlockedSlot.master_id == master_id,
+                BlockedSlot.date_start <= date_to,
+                BlockedSlot.date_end >= date_from,
+            )
+            .order_by(BlockedSlot.date_start)
+        )
+        slots = db.execute(stmt).scalars().all()
+    items = [
+        BlockedSlotOut(
+            id=b.id,
+            date_start=b.date_start,
+            date_end=b.date_end,
+            reason=b.reason,
+        )
+        for b in slots
+    ]
+    return web.json_response({"blocked_slots": [x.model_dump(mode="json") for x in items]})
+
+
+@routes.post("/api/miniapp/master/blocked-slots")
+async def post_master_blocked_slots(request: web.Request) -> web.Response:
+    """Создать блокировку дат. date_end опционально — одна дата."""
+    payload_raw = await request.json()
+    data = BlockedSlotCreateIn.model_validate(payload_raw)
+    date_end = data.date_end if data.date_end is not None else data.date_start
+    if date_end < data.date_start:
+        conflict("date_end не может быть раньше date_start.", code="invalid_range")
+
+    with SessionLocal() as db:
+        master_id = require_master(db, request)
+        master = db.get(Master, master_id)
+        if master is None:
+            not_found("Мастер не найден.", code="master_not_found")
+        tz = ZoneInfo(master.timezone)
+        now_local = datetime.now(UTC).astimezone(tz).date()
+        if date_end < now_local:
+            conflict("Нельзя блокировать даты в прошлом.", code="past_date")
+
+        blocked = BlockedSlot(
+            master_id=master_id,
+            date_start=data.date_start,
+            date_end=date_end,
+            reason=data.reason,
+        )
+        db.add(blocked)
+        db.commit()
+        db.refresh(blocked)
+    item = BlockedSlotOut(
+        id=blocked.id,
+        date_start=blocked.date_start,
+        date_end=blocked.date_end,
+        reason=blocked.reason,
+    )
+    return web.json_response(item.model_dump(mode="json"))
+
+
+@routes.delete("/api/miniapp/master/blocked-slots/{blocked_slot_id}")
+async def delete_master_blocked_slot(request: web.Request) -> web.Response:
+    """Удалить блокировку."""
+    blocked_slot_id = parse_int("blocked_slot_id", request.match_info.get("blocked_slot_id"))
+
+    with SessionLocal() as db:
+        master_id = require_master(db, request)
+        b = db.get(BlockedSlot, blocked_slot_id)
+        if b is None or b.master_id != master_id:
+            not_found("Блокировка не найдена.", code="blocked_slot_not_found")
+        db.delete(b)
+        db.commit()
+    return web.Response(status=204)
 
 
 def setup_routes(app: web.Application) -> None:

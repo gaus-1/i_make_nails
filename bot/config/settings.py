@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     timezone: str = Field("Europe/Moscow", alias="TIMEZONE")
     webhook_domain: str = Field(..., alias="WEBHOOK_DOMAIN")
 
+    # Мини-апп: dev — принимать X-Telegram-Id без проверки initData; иначе требовать initData.
+    miniapp_auth: str = Field("prod", alias="MINIAPP_AUTH")
+    init_data_ttl_seconds: int = Field(86400, alias="INIT_DATA_TTL_SECONDS")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

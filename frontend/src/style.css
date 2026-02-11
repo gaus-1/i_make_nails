@@ -148,6 +148,7 @@ body {
   border-radius: var(--radius-pill);
   border: none;
   padding: 8px 0;
+  min-height: 44px;
   font-size: 13px;
   font-weight: 500;
   background: transparent;
@@ -346,6 +347,7 @@ body {
 
 .slot {
   min-width: 56px;
+  min-height: 44px;
   padding: 8px 12px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-subtle);
@@ -353,6 +355,9 @@ body {
   font-size: 13px;
   cursor: pointer;
   flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .slot--active {
@@ -380,6 +385,7 @@ body {
   font-size: 14px;
   font-weight: 600;
   min-width: 0;
+  word-break: break-word;
 }
 
 .shell__summary-meta {
@@ -410,6 +416,7 @@ body {
   border: none;
   border-radius: var(--radius-pill);
   padding: 6px 8px;
+  min-height: 44px;
   font-size: 12px;
   font-weight: 500;
   background: transparent;
@@ -475,6 +482,33 @@ body {
 
 button {
   font-family: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 360px) {
+  #app {
+    padding: 12px 8px 20px;
+  }
+
+  .shell {
+    padding: 12px 10px 14px;
+  }
+
+  .shell__cal-cell {
+    max-width: 38px;
+    font-size: 12px;
+  }
+
+  .shell__calendar-header span {
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 420px) {

@@ -11,3 +11,8 @@ logs/
 **/.l*/
 **/.p*/
 .local/
+
+# E2E артефакты
+test-results/
+playwright-report/
+playwright/.cache/

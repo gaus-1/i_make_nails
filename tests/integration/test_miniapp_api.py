@@ -40,9 +40,10 @@ async def test_full_client_flow_create_and_list_appointments(
     """Happy path: клиент получает услуги, слоты, создаёт запись и видит её в /appointments/my."""
     db = setup_in_memory_session(monkeypatch)
 
-    # настройка env-подобных настроек для мастера
+    # настройка env: мастер и dev-режим (X-Telegram-Id без initData)
     monkeypatch.setattr(settings, "master_telegram_ids", "111")
     monkeypatch.setattr(settings, "admin_telegram_ids", "222")
+    monkeypatch.setattr(settings, "miniapp_auth", "dev")
 
     master = Master(timezone="Europe/Moscow", booking_enabled=True)
     db.add(master)
@@ -93,10 +94,11 @@ async def test_full_client_flow_create_and_list_appointments(
         assert slots_payload["slots"]
         first_slot_iso = slots_payload["slots"][0]["start_utc_iso"]
 
-        # 3. создаём запись
+        # 3. создаём запись (telegram_id из заголовка в dev)
         telegram_id = 555
         resp = await client.post(
             "/api/miniapp/appointments",
+            headers={"X-Telegram-Id": str(telegram_id)},
             json={
                 "telegram_id": telegram_id,
                 "name": "Тестовый клиент",
@@ -131,6 +133,7 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
 
     monkeypatch.setattr(settings, "master_telegram_ids", "111")
     monkeypatch.setattr(settings, "admin_telegram_ids", "222")
+    monkeypatch.setattr(settings, "miniapp_auth", "dev")
 
     master = Master(timezone="Europe/Moscow", booking_enabled=True)
     db.add(master)
