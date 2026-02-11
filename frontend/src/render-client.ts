@@ -21,6 +21,7 @@ import {
 
 export async function loadSlots(dateStr: string, scheduleRender: () => void): Promise<void> {
   state.loading = true
+  state.error = null
   scheduleRender()
   try {
     const data = await apiGet<{ date: string; slots: Slot[] }>(API.slots(dateStr))
@@ -329,7 +330,9 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         if (state.slots.length === 0) {
           const noSlots = document.createElement('p')
           noSlots.className = 'shell__hint'
-          noSlots.textContent = 'Нет свободных слотов на эту дату.'
+          noSlots.textContent = state.error
+            ? 'Не удалось загрузить слоты. Попробуйте ещё раз.'
+            : 'Нет свободных слотов на эту дату.'
           calendarWrap.appendChild(noSlots)
         } else {
           for (const slot of state.slots) {
@@ -429,14 +432,6 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
 export function renderClient(shell: HTMLElement, scheduleRender: () => void): void {
   const main = document.createElement('main')
   main.className = 'shell__main'
-
-  const hero = document.createElement('section')
-  hero.className = 'shell__card shell__hero'
-  const heroP = document.createElement('p')
-  heroP.className = 'shell__subtitle'
-  heroP.textContent = 'Выберите день, время и подтвердите запись.'
-  hero.appendChild(heroP)
-  main.appendChild(hero)
 
   const tabs = document.createElement('section')
   tabs.className = 'shell__tabs'

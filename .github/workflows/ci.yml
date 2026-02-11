@@ -36,6 +36,7 @@ jobs:
 
       - name: Pytest
         env:
+          PYTHONPATH: .
           TELEGRAM_BOT_TOKEN: dummy
           DATABASE_URL: "sqlite+pysqlite:///:memory:"
           SECRET_KEY: ci-secret-key

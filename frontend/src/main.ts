@@ -46,20 +46,6 @@ function render(): void {
   const header = document.createElement('header')
   header.className = 'shell__header'
   if (state.appView === 'client') {
-    const openBtn = document.createElement('button')
-    openBtn.className = 'shell__pill shell__pill--primary'
-    openBtn.type = 'button'
-    openBtn.textContent = 'Открыть запись'
-    openBtn.addEventListener('click', () => {
-      state.view = 'booking'
-      state.success = null
-      state.error = null
-      state.rescheduleAppointmentId = null
-      const mainEl = document.querySelector('.shell__main')
-      mainEl?.scrollIntoView({ behavior: 'smooth' })
-      render()
-    })
-    header.appendChild(openBtn)
     if (state.userRole === 'master' || state.userRole === 'admin') {
       const masterLink = document.createElement('button')
       masterLink.className = 'shell__pill'

@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from aiohttp import web
@@ -25,7 +26,8 @@ def _normalize_webhook_domain(raw: str) -> str:
 
 @web.middleware
 async def json_error_middleware(
-    request: web.Request, handler: web.views.RequestHandler
+    request: web.Request,
+    handler: Callable[[web.Request], Awaitable[web.StreamResponse]],
 ) -> web.StreamResponse:
     """Необработанные исключения — ответ 500 в формате JSON."""
     try:

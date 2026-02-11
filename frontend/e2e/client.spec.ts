@@ -8,8 +8,7 @@ test.describe('Клиент', () => {
     await page.goto(`/?telegram_id=${CLIENT_ID}`)
   })
 
-  test('загрузка: заголовок и вкладка Записаться', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Открыть запись' })).toBeVisible()
+  test('загрузка: вкладки Записаться и Мои записи', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Записаться' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Мои записи' })).toBeVisible()
   })
@@ -34,10 +33,10 @@ test.describe('Клиент', () => {
     await expect(page.getByRole('button', { name: 'Подтвердить запись' })).toBeVisible()
   })
 
-  test('кнопка Открыть запись: переход на запись и скролл', async ({ page }) => {
+  test('переход Мои записи → Записаться: календарь виден', async ({ page }) => {
     await page.getByRole('button', { name: 'Мои записи' }).click()
     await expect(page.getByRole('heading', { name: 'Мои записи' })).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: 'Открыть запись' }).click()
+    await page.getByRole('button', { name: 'Записаться' }).click()
     await expect(page.getByRole('button', { name: 'Записаться' })).toHaveClass(/shell__tab--active/)
     await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible({ timeout: 3000 })
   })
