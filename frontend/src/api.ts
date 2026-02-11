@@ -64,9 +64,14 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
   invalid_init_data: 'Откройте приложение в Telegram.',
 }
 
+const SERVER_ERROR_MESSAGE = 'Временная ошибка. Попробуйте позже.'
+
 export function normalizeApiError(text: string): string {
   if (text.trimStart().toLowerCase().startsWith('<!doctype') || text.includes('</html>'))
-    return 'Сервер недоступен. Проверьте подключение.'
+    return SERVER_ERROR_MESSAGE
+  const lower = text.toLowerCase()
+  if (/500|502|503|internal server error|got itself in trouble/.test(lower))
+    return SERVER_ERROR_MESSAGE
   try {
     const j = JSON.parse(text) as { error?: string; detail?: string; message?: string; code?: string }
     const code = j.code

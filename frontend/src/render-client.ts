@@ -438,7 +438,7 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   hero.className = 'shell__card shell__hero'
   const heroP = document.createElement('p')
   heroP.className = 'shell__subtitle'
-  heroP.textContent = 'Выберите услугу, время и подтвердите запись.'
+  heroP.textContent = 'Выберите день, время и подтвердите запись.'
   hero.appendChild(heroP)
   main.appendChild(hero)
 

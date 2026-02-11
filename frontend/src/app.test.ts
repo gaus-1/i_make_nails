@@ -7,7 +7,7 @@ import './main'
 describe('mini-app shell', () => {
   it('renders primary action and hero text', () => {
     const cta = screen.getByRole('button', { name: /открыть запись/i })
-    const hero = screen.getByText(/Выберите услугу, время и подтвердите запись/)
+    const hero = screen.getByText(/Выберите день, время и подтвердите запись/)
     expect(cta).toBeInTheDocument()
     expect(hero).toBeInTheDocument()
   })
@@ -19,9 +19,8 @@ describe('mini-app shell', () => {
     expect(within(summarySection!).getByRole('button', { name: /подтвердить запись/i })).toBeInTheDocument()
   })
 
-  it('shows date/time section with hint when no service selected', () => {
+  it('shows date/time section with hint', () => {
     expect(screen.getByText('Дата и время')).toBeInTheDocument()
-    expect(screen.getByText(/Свободные окошки из расписания/)).toBeInTheDocument()
-    expect(screen.getByText('Сначала выберите услугу.')).toBeInTheDocument()
+    expect(screen.getByText(/Выберите день — под календарём появятся свободные слоты/)).toBeInTheDocument()
   })
 })
