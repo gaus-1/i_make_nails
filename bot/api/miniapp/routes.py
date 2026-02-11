@@ -16,6 +16,7 @@ from bot.api.deps import (
     parse_date,
     parse_int,
     require_master,
+    resolve_telegram_role,
 )
 from bot.api.schemas import (
     AppointmentCreateIn,
@@ -31,6 +32,7 @@ from bot.api.schemas import (
     MasterAppointmentsResponse,
     MasterSettingsOut,
     MasterSettingsPatchIn,
+    MeOut,
     ServiceOut,
     ServicesResponse,
     SlotOut,
@@ -43,6 +45,16 @@ from bot.services import AppointmentService, ScheduleService
 from bot.services.exceptions import SlotBusyError
 
 routes = web.RouteTableDef()
+
+
+@routes.get("/api/miniapp/me")
+async def get_me(request: web.Request) -> web.Response:
+    """Return current user telegram_id and role (admin/master/client) for UI switcher."""
+    telegram_id = get_telegram_id_from_request(request)
+    role_raw = resolve_telegram_role(telegram_id)
+    role = (role_raw or "client").lower()
+    body = MeOut(telegram_id=telegram_id, role=role)
+    return web.json_response(body.model_dump(mode="json"))
 
 
 @routes.get("/api/miniapp/services")

@@ -60,11 +60,15 @@ body {
 .shell__header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
 .shell__pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-pill);
   padding: 8px 14px;
   font-size: 13px;
@@ -73,7 +77,9 @@ body {
   background: transparent;
   color: var(--accent-strong);
   cursor: pointer;
+  touch-action: manipulation;
   white-space: nowrap;
+  text-align: center;
   transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
     filter var(--transition-fast) ease;
 }
@@ -162,9 +168,12 @@ body {
 }
 
 .shell__tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-pill);
   border: none;
-  padding: 8px 0;
+  padding: 8px 12px;
   min-height: 44px;
   font-size: 13px;
   font-weight: 500;
@@ -172,6 +181,7 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   touch-action: manipulation;
+  text-align: center;
   transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
     color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
@@ -204,6 +214,17 @@ body {
   color: var(--text-muted);
 }
 
+.shell__error-retry {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.shell__error-retry .shell__section-caption {
+  margin: 0;
+}
+
 .shell__caption-block {
   margin-bottom: 8px;
 }
@@ -216,11 +237,14 @@ body {
 }
 
 .service-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 14px;
   border: 1px solid var(--border-subtle);
   background: #ffffff;
   padding: 10px 12px;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   min-width: 0;
   flex: 1 1 auto;
@@ -242,6 +266,7 @@ body {
 .service-card__name {
   font-size: 13px;
   font-weight: 500;
+  text-align: center;
 }
 
 .shell__calendar-wrap {
@@ -406,6 +431,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
     border-color var(--transition-fast) ease, color var(--transition-fast) ease;
 }
@@ -472,6 +498,9 @@ body {
 }
 
 .shell__period-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 1;
   min-width: 0;
   border: none;
@@ -484,6 +513,7 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   touch-action: manipulation;
+  text-align: center;
   transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
     color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
@@ -618,6 +648,11 @@ body {
   margin-top: 12px;
 }
 
+.shell button {
+  font-family: inherit;
+  text-align: center;
+}
+
 button {
   font-family: inherit;
 }
@@ -667,6 +702,7 @@ select:focus-visible {
 
   .shell__header {
     justify-content: center;
+    gap: 10px;
   }
 
   .shell__period-tabs {

@@ -41,6 +41,7 @@ export type BlockedSlotItem = {
 
 export const state = {
   appView: 'client' as 'client' | 'master',
+  userRole: null as string | null,
   view: 'booking' as 'booking' | 'my',
   services: [] as Service[],
   selectedServiceId: null as number | null,
@@ -49,6 +50,7 @@ export const state = {
   selectedSlotUtc: null as string | null,
   appointments: [] as Appointment[],
   loading: false,
+  servicesLoading: false,
   error: null as string | null,
   success: null as string | null,
   calendarMonth: new Date(),

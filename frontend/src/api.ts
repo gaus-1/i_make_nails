@@ -1,6 +1,7 @@
 /** API мини-аппа: эндпоинты, заголовки, запросы. */
 
 export const API = {
+  me: '/api/miniapp/me',
   services: '/api/miniapp/services',
   slots: (date: string, serviceId: number) =>
     `/api/miniapp/slots?date=${date}&service_id=${serviceId}`,

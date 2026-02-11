@@ -21,6 +21,9 @@ import {
 } from './utils'
 
 export async function loadServices(scheduleRender: () => void): Promise<void> {
+  state.servicesLoading = true
+  state.error = null
+  scheduleRender()
   try {
     const data = await apiGet<{ services: Service[] }>(API.services)
     state.services = data.services
@@ -29,6 +32,7 @@ export async function loadServices(scheduleRender: () => void): Promise<void> {
   } catch (e) {
     state.error = e instanceof Error ? e.message : String(e)
   }
+  state.servicesLoading = false
   scheduleRender()
 }
 
@@ -253,11 +257,29 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   sectionService.appendChild(capService)
   const servicesWrap = document.createElement('div')
   servicesWrap.className = 'shell__services-wrap'
-  if (state.services.length === 0 && !state.loading) {
-    const empty = document.createElement('p')
-    empty.className = 'shell__section-caption'
-    empty.textContent = 'Загрузка услуг…'
-    sectionService.appendChild(empty)
+  if (state.servicesLoading) {
+    const p = document.createElement('p')
+    p.className = 'shell__section-caption'
+    p.textContent = 'Загрузка услуг…'
+    sectionService.appendChild(p)
+  } else if (state.services.length === 0) {
+    const wrap = document.createElement('div')
+    wrap.className = 'shell__error-retry'
+    const isTelegramIdError =
+      (state.error?.includes('Telegram id is required') || state.error?.includes('X-Telegram-Id')) ?? false
+    if (state.error && !isTelegramIdError) {
+      const err = document.createElement('p')
+      err.className = 'shell__section-caption'
+      err.textContent = state.error
+      wrap.appendChild(err)
+    }
+    const retryBtn = document.createElement('button')
+    retryBtn.type = 'button'
+    retryBtn.className = 'shell__pill'
+    retryBtn.textContent = 'Повторить'
+    retryBtn.addEventListener('click', () => loadServices(scheduleRender))
+    wrap.appendChild(retryBtn)
+    sectionService.appendChild(wrap)
   } else {
     for (const s of state.services) {
       const btn = document.createElement('button')

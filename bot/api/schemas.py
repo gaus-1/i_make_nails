@@ -7,6 +7,13 @@ from datetime import date, datetime, time
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class MeOut(BaseModel):
+    """Current user identity and role for mini-app."""
+
+    telegram_id: int
+    role: str = Field(..., description="'admin' | 'master' | 'client'")
+
+
 class ServiceOut(BaseModel):
     """Public representation of a service in mini-app."""
 
