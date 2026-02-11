@@ -65,18 +65,6 @@ export async function loadMyAppointments(scheduleRender: () => void): Promise<vo
 }
 
 function renderMyAppointments(main: HTMLElement, scheduleRender: () => void): void {
-  if (state.error) {
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.error
-    main.appendChild(err)
-  }
-  if (state.success) {
-    const ok = document.createElement('p')
-    ok.className = 'shell__success'
-    ok.textContent = state.success
-    main.appendChild(ok)
-  }
   const card = document.createElement('section')
   card.className = 'shell__card shell__section'
   const titleRow = document.createElement('div')
@@ -246,24 +234,10 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   const user = getTelegramUser()
   if (!user) {
     const hint = document.createElement('p')
-    hint.className = 'shell__section-caption'
-    hint.style.marginBottom = '8px'
+    hint.className = 'shell__section-caption shell__caption-block'
     hint.textContent = 'Для записи откройте приложение в Telegram.'
     main.appendChild(hint)
   }
-  if (state.error) {
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.error
-    main.appendChild(err)
-  }
-  if (state.success) {
-    const ok = document.createElement('p')
-    ok.className = 'shell__success'
-    ok.textContent = state.success
-    main.appendChild(ok)
-  }
-
   const layout = document.createElement('section')
   layout.className = 'shell__layout'
 
@@ -449,6 +423,24 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   layout.appendChild(sectionSlot)
   main.appendChild(layout)
 
+  const phoneWrap = document.createElement('div')
+  phoneWrap.className = 'shell__card shell__section'
+  const phoneLabel = document.createElement('label')
+  phoneLabel.className = 'shell__section-caption'
+  phoneLabel.textContent = 'Телефон (необязательно)'
+  const phoneInput = document.createElement('input')
+  phoneInput.type = 'tel'
+  phoneInput.className = 'shell__input shell__input--tel'
+  phoneInput.placeholder = '+7 900 123-45-67'
+  phoneInput.value = state.bookingPhone
+  phoneInput.addEventListener('input', () => {
+    state.bookingPhone = phoneInput.value
+    scheduleRender()
+  })
+  phoneWrap.appendChild(phoneLabel)
+  phoneWrap.appendChild(phoneInput)
+  main.appendChild(phoneWrap)
+
   const summary = document.createElement('section')
   summary.className = 'shell__card shell__summary'
   const serviceName =
@@ -471,10 +463,14 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   const confirmBtn = document.createElement('button')
   confirmBtn.className = 'shell__pill shell__pill--primary'
   confirmBtn.type = 'button'
-  confirmBtn.textContent = isReschedule ? 'Перенести запись' : 'Подтвердить запись'
   const canConfirm =
-    state.selectedServiceId && state.selectedSlotUtc && !state.loading
+    state.selectedServiceId && state.selectedSlotUtc && !state.loading && !state.submitting
   confirmBtn.disabled = !canConfirm
+  confirmBtn.textContent = state.submitting
+    ? 'Подождите…'
+    : isReschedule
+      ? 'Перенести запись'
+      : 'Подтвердить запись'
   confirmBtn.addEventListener('click', async () => {
     if (!state.selectedServiceId || !state.selectedSlotUtc) return
     const user = getTelegramUser()
@@ -483,7 +479,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
       scheduleRender()
       return
     }
-    state.loading = true
+    state.submitting = true
     state.error = null
     scheduleRender()
     try {
@@ -498,11 +494,12 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         await apiPost(API.createAppointment, {
           telegram_id: user.id,
           name: user.name,
-          phone: null,
+          phone: state.bookingPhone.trim() || null,
           service_id: state.selectedServiceId,
           slot_start_utc: state.selectedSlotUtc,
         })
         state.success = 'Запись создана. Ждём вас!'
+        state.bookingPhone = ''
         state.selectedSlotUtc = null
         state.slots = []
         state.selectedDate = null
@@ -512,7 +509,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
       state.error = e instanceof Error ? e.message : String(e)
       scheduleRender()
     } finally {
-      state.loading = false
+      state.submitting = false
       scheduleRender()
     }
   })
@@ -559,6 +556,22 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   tabs.appendChild(tabBook)
   tabs.appendChild(tabMy)
   main.appendChild(tabs)
+
+  const messagesZone = document.createElement('div')
+  messagesZone.className = 'shell__messages'
+  if (state.error) {
+    const err = document.createElement('p')
+    err.className = 'shell__error'
+    err.textContent = state.error
+    messagesZone.appendChild(err)
+  }
+  if (state.success) {
+    const ok = document.createElement('p')
+    ok.className = 'shell__success'
+    ok.textContent = state.success
+    messagesZone.appendChild(ok)
+  }
+  main.appendChild(messagesZone)
 
   if (state.view === 'my') {
     renderMyAppointments(main, scheduleRender)

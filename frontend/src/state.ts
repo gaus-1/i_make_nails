@@ -55,6 +55,7 @@ export const state = {
   myPeriod: 'week' as 'day' | 'week' | 'month',
   myPeriodAnchor: new Date(),
   rescheduleAppointmentId: null as number | null,
+  bookingPhone: '' as string,
   masterTab: 'schedule' as 'schedule' | 'clients' | 'settings' | 'blocked',
   masterScheduleDate: toDateStr(),
   masterAppointments: [] as MasterAppointment[],
@@ -63,6 +64,9 @@ export const state = {
   masterBlockedSlots: [] as BlockedSlotItem[],
   masterLoading: false,
   masterError: null as string | null,
+  submitting: false,
+  masterSavingDay: null as number | null,
+  masterBlockedSubmitting: false,
 }
 
 function toDateStr(): string {

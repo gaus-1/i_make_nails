@@ -13,6 +13,8 @@
   --radius-pill: 999px;
   --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.18);
   --shadow-card: 0 12px 30px rgba(15, 23, 42, 0.08);
+  --transition-fast: 0.15s;
+  --transition-normal: 0.25s;
 }
 
 *,
@@ -72,6 +74,12 @@ body {
   color: var(--accent-strong);
   cursor: pointer;
   white-space: nowrap;
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
+    filter var(--transition-fast) ease;
+}
+
+.shell__pill:active {
+  transform: scale(0.98);
 }
 
 .shell__pill--primary {
@@ -84,6 +92,11 @@ body {
   filter: brightness(1.03);
 }
 
+.shell__pill--primary:active:not(:disabled) {
+  transform: scale(0.98);
+  filter: brightness(0.98);
+}
+
 .shell__pill--primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -93,6 +106,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.shell__messages:not(:empty) {
+  margin-bottom: 4px;
 }
 
 .shell__card {
@@ -154,6 +171,12 @@ body {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
+    color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+
+.shell__tab:active {
+  transform: scale(0.98);
 }
 
 .shell__tab--active {
@@ -180,6 +203,10 @@ body {
   color: var(--text-muted);
 }
 
+.shell__caption-block {
+  margin-bottom: 8px;
+}
+
 .shell__services-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -197,6 +224,12 @@ body {
   min-width: 0;
   flex: 1 1 auto;
   max-width: 100%;
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
+    border-color var(--transition-fast) ease;
+}
+
+.service-card:active {
+  transform: scale(0.98);
 }
 
 .service-card--active {
@@ -242,6 +275,11 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0;
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease;
+}
+
+.shell__calendar-nav button:active {
+  transform: scale(0.95);
 }
 
 .shell__cal-weekdays {
@@ -282,6 +320,12 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0;
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
+    color var(--transition-fast) ease;
+}
+
+.shell__cal-cell:active {
+  transform: scale(0.92);
 }
 
 .shell__cal-cell--other {
@@ -358,6 +402,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
+    border-color var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.slot:active {
+  transform: scale(0.98);
 }
 
 .slot--active {
@@ -411,6 +461,10 @@ body {
   padding: 3px;
 }
 
+.shell__period-tabs--master {
+  margin-bottom: 12px;
+}
+
 .shell__period-tab {
   flex: 1;
   border: none;
@@ -422,6 +476,12 @@ body {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
+    color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+
+.shell__period-tab:active {
+  transform: scale(0.98);
 }
 
 .shell__period-tab--active {
@@ -472,12 +532,82 @@ body {
   font-weight: 500;
   font-size: 14px;
   flex: 1 1 100%;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .shell__appointment-meta {
   font-size: 12px;
   color: var(--text-muted);
   flex: 1 1 auto;
+}
+
+.shell__appointment-item .shell__pill {
+  flex-shrink: 0;
+}
+
+.shell .shell__input,
+.shell input[type='text'],
+.shell input[type='tel'],
+.shell input[type='date'],
+.shell input[type='time'],
+.shell select {
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  font-size: 13px;
+  font-family: inherit;
+  min-height: 44px;
+  background: var(--bg-card);
+}
+
+.shell__input--tel {
+  width: 100%;
+  max-width: 280px;
+}
+
+.shell__input--reason {
+  flex: 1;
+  min-width: 120px;
+}
+
+.shell__form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.shell__settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.shell__label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shell__form-block {
+  margin-bottom: 12px;
+}
+
+.shell__clients-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.shell__date-input {
+  margin-bottom: 10px;
+}
+
+.shell__settings-ws-title {
+  margin-top: 12px;
 }
 
 button {
@@ -526,6 +656,11 @@ select:focus-visible {
     justify-content: center;
   }
 
+  .shell__period-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .service-card {
     flex: 1 1 100%;
   }
@@ -543,5 +678,29 @@ select:focus-visible {
 
   .shell {
     max-width: 480px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell__pill,
+  .shell__pill--primary,
+  .shell__tab,
+  .shell__period-tab,
+  .service-card,
+  .slot,
+  .shell__cal-cell,
+  .shell__calendar-nav button {
+    transition: none;
+  }
+
+  .shell__pill:active,
+  .shell__pill--primary:active:not(:disabled),
+  .shell__tab:active,
+  .shell__period-tab:active,
+  .service-card:active,
+  .slot:active,
+  .shell__cal-cell:active,
+  .shell__calendar-nav button:active {
+    transform: none;
   }
 }

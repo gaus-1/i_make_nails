@@ -221,7 +221,8 @@ async def cancel_appointment(request: web.Request) -> web.Response:
             forbidden("Вы не можете управлять этой записью.", code="not_your_appointment")
 
         now_utc = datetime.now(UTC)
-        if appt.status != "confirmed" or appt.datetime_start <= now_utc:
+        start_utc = appt.datetime_start if appt.datetime_start.tzinfo else appt.datetime_start.replace(tzinfo=UTC)
+        if appt.status != "confirmed" or start_utc <= now_utc:
             conflict("Эту запись уже нельзя отменить.", code="cannot_cancel")
 
         appt.status = "cancelled"
@@ -262,7 +263,8 @@ async def reschedule_appointment(request: web.Request) -> web.Response:
             forbidden("Вы не можете управлять этой записью.", code="not_your_appointment")
 
         now_utc = datetime.now(UTC)
-        if appt.status != "confirmed" or appt.datetime_start <= now_utc:
+        start_utc = appt.datetime_start if appt.datetime_start.tzinfo else appt.datetime_start.replace(tzinfo=UTC)
+        if appt.status != "confirmed" or start_utc <= now_utc:
             conflict("Эту запись уже нельзя перенести.", code="cannot_reschedule")
 
         svc = AppointmentService(db)

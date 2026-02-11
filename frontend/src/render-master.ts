@@ -97,7 +97,8 @@ async function createBlockedSlot(
   dateStart: string,
   dateEnd: string,
   reason: string | null,
-  scheduleRender: () => void
+  scheduleRender: () => void,
+  onSuccess?: () => void
 ): Promise<void> {
   try {
     const body: { date_start: string; date_end?: string; reason?: string | null } = {
@@ -114,6 +115,7 @@ async function createBlockedSlot(
     if (!r.ok) throw new Error(JSON.parse(text)?.error ?? text)
     state.masterError = null
     await loadMasterBlockedSlots(scheduleRender)
+    onSuccess?.()
   } catch (e) {
     state.masterError = e instanceof Error ? e.message : String(e)
     scheduleRender()
@@ -195,19 +197,12 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
   const dateInput = document.createElement('input')
   dateInput.type = 'date'
   dateInput.value = state.masterScheduleDate
-  dateInput.className = 'shell__section-caption'
-  dateInput.style.marginBottom = '10px'
+  dateInput.className = 'shell__input shell__date-input'
   dateInput.addEventListener('change', () => {
     state.masterScheduleDate = dateInput.value
     loadMasterAppointments(scheduleRender)
   })
   card.appendChild(dateInput)
-  if (state.masterError) {
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.masterError
-    card.appendChild(err)
-  }
   if (state.masterLoading) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
@@ -246,12 +241,6 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
   title.className = 'shell__section-title'
   title.textContent = 'Клиенты'
   card.appendChild(title)
-  if (state.masterError) {
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.masterError
-    card.appendChild(err)
-  }
   if (state.masterLoading) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
@@ -259,9 +248,7 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
     card.appendChild(p)
   } else {
     const list = document.createElement('div')
-    list.className = 'shell__appointments-list'
-    list.style.maxHeight = '320px'
-    list.style.overflowY = 'auto'
+    list.className = 'shell__appointments-list shell__clients-list'
     for (const c of state.masterClients) {
       const item = document.createElement('div')
       item.className = 'shell__appointment-item'
@@ -274,9 +261,7 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
       item.appendChild(name)
       item.appendChild(meta)
       const label = document.createElement('label')
-      label.style.display = 'flex'
-      label.style.alignItems = 'center'
-      label.style.gap = '8px'
+      label.className = 'shell__label-row'
       const cb = document.createElement('input')
       cb.type = 'checkbox'
       cb.checked = c.booking_allowed
@@ -300,12 +285,6 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
   title.className = 'shell__section-title'
   title.textContent = 'Настройки'
   card.appendChild(title)
-  if (state.masterError) {
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.masterError
-    card.appendChild(err)
-  }
   if (state.masterLoading && !state.masterSettings) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
@@ -314,11 +293,9 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
   } else if (state.masterSettings) {
     const s = state.masterSettings
     const bookingWrap = document.createElement('div')
-    bookingWrap.style.marginBottom = '12px'
+    bookingWrap.className = 'shell__form-block'
     const bookingLabel = document.createElement('label')
-    bookingLabel.style.display = 'flex'
-    bookingLabel.style.alignItems = 'center'
-    bookingLabel.style.gap = '8px'
+    bookingLabel.className = 'shell__label-row'
     const bookingCb = document.createElement('input')
     bookingCb.type = 'checkbox'
     bookingCb.checked = s.booking_enabled
@@ -331,11 +308,11 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
     card.appendChild(bookingWrap)
 
     const tzWrap = document.createElement('div')
-    tzWrap.style.marginBottom = '12px'
+    tzWrap.className = 'shell__form-block'
     const tzLabel = document.createElement('label')
     tzLabel.textContent = 'Часовой пояс '
     const tzSelect = document.createElement('select')
-    tzSelect.style.padding = '6px 8px'
+    tzSelect.className = 'shell__input'
     for (const tz of TIMEZONES) {
       const opt = document.createElement('option')
       opt.value = tz
@@ -351,25 +328,22 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
     card.appendChild(tzWrap)
 
     const wsTitle = document.createElement('h3')
-    wsTitle.className = 'shell__section-caption'
-    wsTitle.style.marginTop = '12px'
+    wsTitle.className = 'shell__section-caption shell__settings-ws-title'
     wsTitle.textContent = 'Рабочие часы по дням'
     card.appendChild(wsTitle)
     const byDay = new Map<number, WorkScheduleItem>()
     for (const ws of s.work_schedule) byDay.set(ws.day_of_week, ws)
     for (let d = 0; d < 7; d++) {
       const row = document.createElement('div')
-      row.style.display = 'flex'
-      row.style.flexWrap = 'wrap'
-      row.style.alignItems = 'center'
-      row.style.gap = '8px'
-      row.style.marginBottom = '8px'
+      row.className = 'shell__settings-row'
       const item = byDay.get(d)
       const startInput = document.createElement('input')
       startInput.type = 'time'
+      startInput.className = 'shell__input'
       startInput.value = item ? formatTimeInput(item.time_start) : '09:00'
       const endInput = document.createElement('input')
       endInput.type = 'time'
+      endInput.className = 'shell__input'
       endInput.value = item ? formatTimeInput(item.time_end) : '18:00'
       row.appendChild(document.createTextNode(DAY_NAMES[d] + ' '))
       row.appendChild(startInput)
@@ -378,16 +352,24 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
       const saveBtn = document.createElement('button')
       saveBtn.className = 'shell__pill'
       saveBtn.type = 'button'
-      saveBtn.textContent = 'Сохранить'
-      saveBtn.addEventListener('click', () => {
+      saveBtn.disabled = state.masterSavingDay === d
+      saveBtn.textContent = state.masterSavingDay === d ? 'Подождите…' : 'Сохранить'
+      saveBtn.addEventListener('click', async () => {
         const rest = s.work_schedule.filter((w) => w.day_of_week !== d)
         const start = startInput.value.length === 5 ? startInput.value + ':00' : startInput.value
         const end = endInput.value.length === 5 ? endInput.value + ':00' : endInput.value
         const newWs = [...rest, { day_of_week: d, time_start: start, time_end: end }]
-        patchMasterSettings(
-          { work_schedule: newWs.map((w) => ({ day_of_week: w.day_of_week, time_start: w.time_start, time_end: w.time_end })) },
-          scheduleRender
-        )
+        state.masterSavingDay = d
+        scheduleRender()
+        try {
+          await patchMasterSettings(
+            { work_schedule: newWs.map((w) => ({ day_of_week: w.day_of_week, time_start: w.time_start, time_end: w.time_end })) },
+            scheduleRender
+          )
+        } finally {
+          state.masterSavingDay = null
+          scheduleRender()
+        }
       })
       row.appendChild(saveBtn)
       card.appendChild(row)
@@ -403,37 +385,41 @@ function renderBlockedTab(main: HTMLElement, scheduleRender: () => void): void {
   title.className = 'shell__section-title'
   title.textContent = 'Закрытые даты'
   card.appendChild(title)
-  if (state.masterError) {
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.masterError
-    card.appendChild(err)
-  }
   const addDiv = document.createElement('div')
-  addDiv.style.display = 'flex'
-  addDiv.style.flexWrap = 'wrap'
-  addDiv.style.gap = '8px'
-  addDiv.style.marginBottom = '12px'
+  addDiv.className = 'shell__form-row'
   const dateStartInput = document.createElement('input')
   dateStartInput.type = 'date'
+  dateStartInput.className = 'shell__input'
   dateStartInput.placeholder = 'Дата от'
   const dateEndInput = document.createElement('input')
   dateEndInput.type = 'date'
+  dateEndInput.className = 'shell__input'
   dateEndInput.placeholder = 'Дата до (необязательно)'
   const reasonInput = document.createElement('input')
   reasonInput.type = 'text'
+  reasonInput.className = 'shell__input shell__input--reason'
   reasonInput.placeholder = 'Причина (необязательно)'
-  reasonInput.style.flex = '1'
-  reasonInput.style.minWidth = '120px'
   const addBtn = document.createElement('button')
   addBtn.className = 'shell__pill shell__pill--primary'
   addBtn.type = 'button'
-  addBtn.textContent = 'Закрыть'
-  addBtn.addEventListener('click', () => {
+  addBtn.disabled = state.masterBlockedSubmitting
+  addBtn.textContent = state.masterBlockedSubmitting ? 'Подождите…' : 'Закрыть'
+  addBtn.addEventListener('click', async () => {
     const start = dateStartInput.value
     if (!start) return
     const end = dateEndInput.value || start
-    createBlockedSlot(start, end, reasonInput.value || null, scheduleRender)
+    state.masterBlockedSubmitting = true
+    scheduleRender()
+    try {
+      await createBlockedSlot(start, end, reasonInput.value || null, scheduleRender, () => {
+        dateStartInput.value = ''
+        dateEndInput.value = ''
+        reasonInput.value = ''
+      })
+    } finally {
+      state.masterBlockedSubmitting = false
+      scheduleRender()
+    }
   })
   addDiv.appendChild(dateStartInput)
   addDiv.appendChild(dateEndInput)
@@ -480,8 +466,7 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
   main.className = 'shell__main'
 
   const tabs = document.createElement('div')
-  tabs.className = 'shell__period-tabs'
-  tabs.style.marginBottom = '12px'
+  tabs.className = 'shell__period-tabs shell__period-tabs--master'
   const tabsData: { key: 'schedule' | 'clients' | 'settings' | 'blocked'; label: string }[] = [
     { key: 'schedule', label: 'Расписание' },
     { key: 'clients', label: 'Клиенты' },
@@ -505,6 +490,16 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
     tabs.appendChild(btn)
   }
   main.appendChild(tabs)
+
+  const messagesZone = document.createElement('div')
+  messagesZone.className = 'shell__messages'
+  if (state.masterError) {
+    const err = document.createElement('p')
+    err.className = 'shell__error'
+    err.textContent = state.masterError
+    messagesZone.appendChild(err)
+  }
+  main.appendChild(messagesZone)
 
   if (state.masterTab === 'schedule') renderScheduleTab(main, scheduleRender)
   else if (state.masterTab === 'clients') renderClientsTab(main, scheduleRender)

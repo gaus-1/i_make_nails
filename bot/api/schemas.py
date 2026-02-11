@@ -55,8 +55,8 @@ class AppointmentCreateIn(BaseModel):
     """Payload for creating a new appointment from mini-app (v1)."""
 
     telegram_id: int = Field(..., description="Telegram ID клиента (временно, до initData).")
-    name: str = Field(..., description="Имя клиента.")
-    phone: str | None = Field(None, description="Телефон клиента.")
+    name: str = Field(..., max_length=200, description="Имя клиента.")
+    phone: str | None = Field(None, max_length=30, description="Телефон клиента.")
     service_id: int
     slot_start_utc: datetime = Field(
         ...,

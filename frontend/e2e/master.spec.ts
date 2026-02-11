@@ -29,11 +29,25 @@ test.describe('Панель мастера', () => {
   test('настройки: вкладка и контент', async ({ page }) => {
     await page.getByRole('button', { name: 'Настройки' }).click()
     await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('button', { name: 'Сохранить' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Сохранить' }).first()).toBeVisible({ timeout: 10000 })
   })
 
   test('закрытые даты: вкладка', async ({ page }) => {
     await page.getByRole('button', { name: 'Закрытые даты' }).click()
     await expect(page.getByRole('heading', { name: 'Закрытые даты' })).toBeVisible({ timeout: 5000 })
+  })
+
+  test('расписание: смена даты загружает записи', async ({ page }) => {
+    const dateInput = page.locator('input[type="date"]').first()
+    await dateInput.waitFor({ state: 'visible', timeout: 5000 })
+    await dateInput.fill('2030-02-15')
+    await expect(page.getByText('Нет записей.').or(page.locator('.shell__appointment-item'))).toBeVisible({ timeout: 5000 })
+  })
+
+  test('закрытые даты: кнопка Закрыть и поля формы', async ({ page }) => {
+    await page.getByRole('button', { name: 'Закрытые даты' }).click()
+    await expect(page.getByRole('heading', { name: 'Закрытые даты' })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('button', { name: 'Закрыть' })).toBeVisible()
+    await expect(page.locator('input[type="date"]').first()).toBeVisible()
   })
 })

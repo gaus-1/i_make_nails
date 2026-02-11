@@ -2,14 +2,11 @@ import asyncio
 import os
 from pathlib import Path
 
-from aiogram import Bot, Dispatcher
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 from loguru import logger
 
 from bot.api.miniapp.routes import setup_routes as setup_miniapp_routes
 from bot.config.settings import settings
-from bot.handlers import start_router
 
 
 def _normalize_webhook_domain(raw: str) -> str:
@@ -22,18 +19,6 @@ def _normalize_webhook_domain(raw: str) -> str:
     if "/" in s:
         s = s.split("/", 1)[0]
     return s
-
-
-async def on_startup(bot: Bot) -> None:
-    """Установка webhook при старте приложения."""
-    host = _normalize_webhook_domain(settings.webhook_domain)
-    if not host:
-        msg = "WEBHOOK_DOMAIN пустой или неверный"
-        raise ValueError(msg)
-    webhook_url = f"https://{host}/webhook"
-    logger.info("Setting webhook: {}", webhook_url)
-    await bot.set_webhook(webhook_url, drop_pending_updates=True)
-    logger.info("Webhook set successfully")
 
 
 async def create_app() -> web.Application:
@@ -50,15 +35,30 @@ async def create_app() -> web.Application:
     # Mini-app HTTP API routes
     setup_miniapp_routes(app)
 
-    # Telegram bot and webhook
-    bot = Bot(token=settings.telegram_bot_token)
-    dp = Dispatcher()
-    dp.include_router(start_router)
-    dp.startup.register(on_startup)
+    # В режиме E2E не поднимаем бота (не нужен валидный TELEGRAM_BOT_TOKEN)
+    if os.environ.get("E2E_SERVER") != "1":
+        from aiogram import Bot, Dispatcher
+        from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-    webhook_path = "/webhook"
-    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
-    setup_application(app, dp, bot=bot)
+        from bot.handlers import start_router
+
+        async def on_startup(bot: Bot) -> None:
+            host = _normalize_webhook_domain(settings.webhook_domain)
+            if not host:
+                raise ValueError("WEBHOOK_DOMAIN пустой или неверный")
+            webhook_url = f"https://{host}/webhook"
+            logger.info("Setting webhook: {}", webhook_url)
+            await bot.set_webhook(webhook_url, drop_pending_updates=True)
+            logger.info("Webhook set successfully")
+
+        bot = Bot(token=settings.telegram_bot_token)
+        dp = Dispatcher()
+        dp.include_router(start_router)
+        dp.startup.register(on_startup)
+
+        webhook_path = "/webhook"
+        SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
+        setup_application(app, dp, bot=bot)
 
     # Статика мини-приложения (собранный frontend из Docker)
     static_dir = Path(__file__).resolve().parent / "static"
@@ -82,7 +82,54 @@ async def create_app() -> web.Application:
     return app
 
 
+def _seed_e2e_db() -> None:
+    """Заполнить in-memory БД для E2E: один мастер, услуга, рабочее расписание."""
+    from datetime import time
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from bot.database.engine import SessionLocal, engine
+    from bot.models import Base, Master, Service, WorkSchedule
+
+    Base.metadata.create_all(bind=engine)
+    db: Session = SessionLocal()
+    try:
+        if db.execute(select(Master).limit(1)).scalars().first() is not None:
+            return
+    except Exception:
+        pass
+    try:
+        master = Master(timezone="Europe/Moscow", booking_enabled=True)
+        db.add(master)
+        db.flush()
+        db.add(
+            Service(
+                master_id=master.id,
+                name="Аппаратный маникюр",
+                duration_minutes=90,
+                is_active=True,
+                sort_order=0,
+            )
+        )
+        for day in range(7):
+            db.add(
+                WorkSchedule(
+                    master_id=master.id,
+                    day_of_week=day,
+                    time_start=time(9, 0),
+                    time_end=time(18, 0),
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+
+
 def main() -> None:
+    if os.environ.get("E2E_SERVER") == "1":
+        _seed_e2e_db()
+
     app = asyncio.run(create_app())
     port = int(os.environ.get("PORT", "8000"))
     web.run_app(app, host="0.0.0.0", port=port)
