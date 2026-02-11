@@ -50,6 +50,21 @@ function parseDateStr(s: string): Date {
   return new Date(s + 'T12:00:00')
 }
 
+function getMonthDayDates(dateStr: string): string[] {
+  const d = parseDateStr(dateStr)
+  const year = d.getFullYear()
+  const month = d.getMonth()
+  const first = new Date(year, month, 1)
+  const last = new Date(year, month + 1, 0)
+  const out: string[] = []
+  const cur = new Date(first)
+  while (cur <= last) {
+    out.push(toYYYYMMDD(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
+
 async function loadMasterAppointments(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
     const tab = state.masterTab
@@ -67,6 +82,27 @@ async function loadMasterAppointments(scheduleRender: () => void): Promise<void>
         for (let i = 0; i < 7; i++) {
           dayDates.push(toYYYYMMDD(addDays(parseDateStr(date), i)))
         }
+        const slotResponses = await Promise.all(
+          dayDates.map((d) =>
+            apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(API.slots(d))
+          )
+        )
+        if (state.masterTab !== tab || state.masterScheduleDate !== date) return
+        state.masterSlotsByDate = {}
+        for (let i = 0; i < dayDates.length; i++) {
+          state.masterSlotsByDate[dayDates[i]] = slotResponses[i].slots
+        }
+        state.masterSlots = slotResponses[0]?.slots ?? []
+        state.masterSlotDurationMinutes = slotResponses[0]?.slot_duration_minutes ?? null
+      } else if (view === 'month') {
+        const dayDates = getMonthDayDates(date)
+        const dateTo = dayDates[dayDates.length - 1]
+        const dateFrom = dayDates[0]
+        const appointmentsRes = await apiGet<{ date: string; appointments: MasterAppointment[] }>(
+          API.masterAppointments(dateFrom, dateTo)
+        )
+        if (state.masterTab !== tab || state.masterScheduleDate !== date) return
+        state.masterAppointments = appointmentsRes.appointments
         const slotResponses = await Promise.all(
           dayDates.map((d) =>
             apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(API.slots(d))
@@ -362,8 +398,17 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
     state.masterScheduleView = 'week'
     loadMasterAppointments(scheduleRender)
   })
+  const monthBtn = document.createElement('button')
+  monthBtn.type = 'button'
+  monthBtn.className = 'shell__period-tab' + (state.masterScheduleView === 'month' ? ' shell__period-tab--active' : '')
+  monthBtn.textContent = 'Месяц'
+  monthBtn.addEventListener('click', () => {
+    state.masterScheduleView = 'month'
+    loadMasterAppointments(scheduleRender)
+  })
   viewTabs.appendChild(dayBtn)
   viewTabs.appendChild(weekBtn)
+  viewTabs.appendChild(monthBtn)
   card.appendChild(viewTabs)
   if (state.masterLoading) {
     const p = document.createElement('p')
@@ -375,6 +420,23 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
     for (let i = 0; i < 7; i++) {
       dayDates.push(toYYYYMMDD(addDays(parseDateStr(state.masterScheduleDate), i)))
     }
+    for (const dateStr of dayDates) {
+      const dayCard = document.createElement('div')
+      dayCard.className = 'shell__day-card'
+      const dayTitle = document.createElement('h3')
+      dayTitle.className = 'shell__section-title shell__day-card-title'
+      const d = parseDateStr(dateStr)
+      dayTitle.textContent = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })
+      dayCard.appendChild(dayTitle)
+      const dayAppointments = state.masterAppointments.filter(
+        (a) => (a.datetime_local.slice(0, 10)) === dateStr
+      )
+      const daySlots = state.masterSlotsByDate[dateStr] ?? []
+      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes)
+      card.appendChild(dayCard)
+    }
+  } else if (state.masterScheduleView === 'month') {
+    const dayDates = getMonthDayDates(state.masterScheduleDate)
     for (const dateStr of dayDates) {
       const dayCard = document.createElement('div')
       dayCard.className = 'shell__day-card'

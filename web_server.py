@@ -21,9 +21,12 @@ from bot.models import Master, WorkSchedule
 def _run_migrations() -> None:
     """Применить миграции Alembic перед стартом (для Railway и др.)."""
     root = Path(__file__).resolve().parent
+    env = os.environ.copy()
+    env.setdefault("DATABASE_URL", settings.database_url)
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=root,
+        env=env,
         capture_output=True,
         text=True,
         timeout=120,

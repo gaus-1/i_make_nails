@@ -62,7 +62,7 @@ export const state = {
   bookingPhone: '' as string,
   masterTab: 'schedule' as 'schedule' | 'clients' | 'settings' | 'blocked',
   masterScheduleDate: toYYYYMMDD(new Date()),
-  masterScheduleView: 'day' as 'day' | 'week',
+  masterScheduleView: 'day' as 'day' | 'week' | 'month',
   masterAppointments: [] as MasterAppointment[],
   masterSlots: [] as Slot[],
   masterSlotsByDate: {} as Record<string, Slot[]>,

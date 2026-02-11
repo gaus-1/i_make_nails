@@ -23,6 +23,12 @@
   box-sizing: border-box;
 }
 
+@media (max-width: 420px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
 html,
 body {
   margin: 0;
@@ -31,11 +37,13 @@ body {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   background: rgba(255, 255, 255, 0.96);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
     sans-serif;
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top);
 }
 
 #app {
@@ -43,10 +51,14 @@ body {
   justify-content: center;
   align-items: stretch;
   padding: 16px 12px 24px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
 .shell {
   width: 100%;
+  min-width: 0;
   max-width: 420px;
   background: rgba(255, 255, 255, 0.96);
   border-radius: 28px;
@@ -771,6 +783,41 @@ select:focus-visible {
   .shell__period-tabs {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  .shell__period-tabs--master {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shell__period-tab {
+    padding: 8px 6px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  .shell__form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shell__form-row .shell__input,
+  .shell__form-row .shell__pill {
+    width: 100%;
+    max-width: none;
+  }
+
+  .shell__form-row .shell__pill--primary {
+    min-height: 44px;
+  }
+
+  .shell__settings-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shell__settings-row .shell__input {
+    flex: 1 1 auto;
     min-width: 0;
   }
 
