@@ -2,37 +2,31 @@
  * Запуск E2E-сервера для Playwright: сборка фронта, копирование в static/, старт web_server с E2E_SERVER=1.
  * Запускать из корня репозитория: node frontend/scripts/start-e2e-server.mjs
  */
-import { cpSync, existsSync, mkdirSync, rmSync, unlinkSync } from 'fs'
-import { spawn } from 'child_process'
+import { cpSync, existsSync, mkdirSync, rmSync } from 'fs'
+import { execSync, spawn } from 'child_process'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
-import { execSync } from 'child_process'
 
-const root = join(fileURLToPath(import.meta.url), '..', '..', '..')
+const root = join(fileURLToPath(import.meta.url), '..', '..', '..') // scripts -> frontend -> project root
 const frontendDir = join(root, 'frontend')
-const distDir = join(frontendDir, 'dist')
 const staticDir = join(root, 'static')
-const e2eDbPath = join(root, 'e2e.db')
 
-// 1. Сборка фронта
-execSync('npm run build', { cwd: frontendDir, stdio: 'inherit' })
+// 1. Сборка фронта (npm run build; e2e.db удаляется в web_server при E2E_SERVER=1)
+execSync('npm run build', { cwd: frontendDir, stdio: 'inherit', shell: true })
 
 // 2. Копирование dist в static
+const distDir = join(frontendDir, 'dist')
 if (existsSync(staticDir)) rmSync(staticDir, { recursive: true })
 mkdirSync(staticDir, { recursive: true })
 cpSync(distDir, staticDir, { recursive: true })
 
-// Файловая БД для E2E (один инстанс на все соединения)
-if (existsSync(e2eDbPath)) {
-  try { unlinkSync(e2eDbPath) } catch (_) {}
-}
-
-// 3. Запуск Python-сервера с E2E-окружением
+// 3. Запуск Python-сервера (уникальный путь к БД — без блокировки от предыдущих запусков)
+const e2eDbName = `e2e-${Date.now()}.db`
 const env = {
   ...process.env,
   E2E_SERVER: '1',
   PORT: '8765',
-  DATABASE_URL: 'sqlite:///e2e.db',
+  DATABASE_URL: `sqlite:///${e2eDbName}`,
   TELEGRAM_BOT_TOKEN: 'e2e-placeholder',
   SECRET_KEY: 'e2e-secret',
   MASTER_TELEGRAM_IDS: '111',

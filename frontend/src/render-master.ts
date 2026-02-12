@@ -627,7 +627,7 @@ function renderBlockedTab(main: HTMLElement, scheduleRender: () => void): void {
   card.className = 'shell__card shell__section'
   const title = document.createElement('h2')
   title.className = 'shell__section-title'
-  title.textContent = 'Закрытые даты'
+  title.textContent = 'Закрытия'
   card.appendChild(title)
   const addDiv = document.createElement('div')
   addDiv.className = 'shell__form-row'
@@ -715,9 +715,9 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
   tabs.setAttribute('aria-label', 'Разделы панели мастера')
   const tabsData: { key: 'schedule' | 'clients' | 'settings' | 'blocked'; label: string }[] = [
     { key: 'schedule', label: 'Расписание' },
-    { key: 'clients', label: 'Клиенты' },
     { key: 'settings', label: 'Настройки' },
-    { key: 'blocked', label: 'Закрытые даты' },
+    { key: 'clients', label: 'Клиенты' },
+    { key: 'blocked', label: 'Закрытия' },
   ]
   for (const t of tabsData) {
     const btn = document.createElement('button')

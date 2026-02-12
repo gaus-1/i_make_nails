@@ -8,7 +8,7 @@ from aiohttp.test_utils import TestClient, TestServer
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from bot.api.miniapp import routes as routes_module
+from bot.api.miniapp import client_routes, master_routes
 from bot.api.miniapp.routes import setup_routes
 from bot.config.settings import settings
 from bot.models import Appointment, Base, Client, Master, Service, WorkSchedule
@@ -22,13 +22,14 @@ def create_test_app() -> web.Application:
 
 
 def setup_in_memory_session(monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Prepare in-memory SQLite DB and patch get_db in routes to use it."""
+    """Prepare in-memory SQLite DB and patch get_db in route modules to use it."""
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     Base.metadata.create_all(bind=engine)
     test_session_factory = sessionmaker(
         bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
     )
-    monkeypatch.setattr(routes_module, "get_db", test_session_factory)
+    monkeypatch.setattr(client_routes, "get_db", test_session_factory)
+    monkeypatch.setattr(master_routes, "get_db", test_session_factory)
     return test_session_factory()
 
 
@@ -506,6 +507,191 @@ async def test_blocked_slots_get_post_delete(
 
 
 @pytest.mark.asyncio
+async def test_me_returns_role(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GET /me возвращает telegram_id и role для клиента, мастера, админа."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    db.add(Master(timezone="Europe/Moscow", booking_enabled=True))
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.get(
+            "/api/miniapp/me",
+            headers={"X-Telegram-Id": "555"},
+        )
+        assert resp.status == 200
+        data = await resp.json()
+        assert data["telegram_id"] == 555
+        assert data["role"] == "client"
+
+        resp = await client.get(
+            "/api/miniapp/me",
+            headers={"X-Telegram-Id": "111"},
+        )
+        assert resp.status == 200
+        assert (await resp.json())["role"] == "master"
+
+        resp = await client.get(
+            "/api/miniapp/me",
+            headers={"X-Telegram-Id": "222"},
+        )
+        assert resp.status == 200
+        assert (await resp.json())["role"] == "admin"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_master_forbidden_for_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Клиент без прав мастера не может зайти в /master/* — 403."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    db.add(Master(timezone="Europe/Moscow", booking_enabled=True))
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.get(
+            "/api/miniapp/master/appointments",
+            params={"date": "2026-02-10"},
+            headers={"X-Telegram-Id": "555"},
+        )
+        assert resp.status == 403
+        data = await resp.json()
+        assert data.get("code") == "master_required"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_booking_disabled_409(monkeypatch: pytest.MonkeyPatch) -> None:
+    """При booking_enabled=False создание записи возвращает 409."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    master = Master(
+        timezone="Europe/Moscow",
+        booking_enabled=False,
+        slot_duration_minutes=60,
+    )
+    db.add(master)
+    db.flush()
+    today = date(2026, 2, 10)
+    ws = WorkSchedule(
+        master_id=master.id,
+        day_of_week=today.weekday(),
+        time_start=time(10, 0),
+        time_end=time(14, 0),
+    )
+    db.add(ws)
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.post(
+            "/api/miniapp/appointments",
+            headers={"X-Telegram-Id": "555"},
+            json={
+                "telegram_id": 555,
+                "name": "Клиент",
+                "phone": None,
+                "slot_start_utc": "2026-02-10T10:00:00+00:00",
+            },
+        )
+        assert resp.status == 409
+        data = await resp.json()
+        assert data.get("code") == "booking_disabled"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_client_blocked_409(monkeypatch: pytest.MonkeyPatch) -> None:
+    """При booking_allowed=False создание записи возвращает 409."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    master = Master(
+        timezone="Europe/Moscow",
+        booking_enabled=True,
+        slot_duration_minutes=60,
+    )
+    db.add(master)
+    db.flush()
+    today = date(2026, 2, 10)
+    ws = WorkSchedule(
+        master_id=master.id,
+        day_of_week=today.weekday(),
+        time_start=time(10, 0),
+        time_end=time(14, 0),
+    )
+    db.add(ws)
+    client_model = Client(
+        master_id=master.id,
+        telegram_id=555,
+        name="Клиент",
+        phone=None,
+        booking_allowed=False,
+    )
+    db.add(client_model)
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.post(
+            "/api/miniapp/appointments",
+            headers={"X-Telegram-Id": "555"},
+            json={
+                "telegram_id": 555,
+                "name": "Клиент",
+                "phone": None,
+                "slot_start_utc": "2026-02-10T10:00:00+00:00",
+            },
+        )
+        assert resp.status == 409
+        data = await resp.json()
+        assert data.get("code") == "client_blocked"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_slots_invalid_date_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Слоты с невалидным date возвращают 400."""
+    db = setup_in_memory_session(monkeypatch)
+    _patch_dev_auth(monkeypatch)
+    db.add(Master(timezone="Europe/Moscow", booking_enabled=True))
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+    try:
+        resp = await client.get(
+            "/api/miniapp/slots",
+            params={"date": "invalid"},
+            headers={"X-Telegram-Id": "555"},
+        )
+        assert resp.status == 400
+        data = await resp.json()
+        assert data.get("code") == "invalid_date"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_slots_missing_date_400(monkeypatch: pytest.MonkeyPatch) -> None:
     """Слоты без параметра date возвращают 400."""
     db = setup_in_memory_session(monkeypatch)
@@ -518,10 +704,14 @@ async def test_slots_missing_date_400(monkeypatch: pytest.MonkeyPatch) -> None:
     client = TestClient(server)
     await client.start_server()
     try:
-        resp = await client.get("/api/miniapp/slots")
+        resp = await client.get(
+            "/api/miniapp/slots",
+            headers={"X-Telegram-Id": "555"},
+        )
         assert resp.status == 400
         data = await resp.json()
         assert "error" in data and "code" in data
+        assert data.get("code") == "missing_parameter"
     finally:
         await client.close()
 

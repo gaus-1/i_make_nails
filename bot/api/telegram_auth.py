@@ -22,7 +22,8 @@ def validate_init_data(init_data_raw: str, bot_token: str, ttl_seconds: int = 86
     try:
         pairs = parse_qsl(init_data_raw, keep_blank_values=True)
         data_dict = dict(pairs)
-    except Exception:
+    except Exception as exc:
+        logger.debug("initData parse_qsl failed: {}", exc)
         return None
 
     received_hash = data_dict.pop("hash", None)

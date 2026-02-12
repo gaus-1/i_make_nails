@@ -77,7 +77,7 @@ def get_telegram_id(request: web.Request) -> int:
 
 
 def get_telegram_id_from_request(request: web.Request) -> int:
-    """Идентификация пользователя: при наличии initData — проверка подписи; иначе в dev — X-Telegram-Id/query."""
+    """Идентификация: initData (если валиден) или fallback на X-Telegram-Id при истечении/сбое."""
     init_data_raw = request.headers.get("X-Telegram-Init-Data")
     if init_data_raw and settings.miniapp_auth != "dev":
         validated = validate_init_data(
@@ -85,15 +85,10 @@ def get_telegram_id_from_request(request: web.Request) -> int:
             settings.telegram_bot_token,
             ttl_seconds=settings.init_data_ttl_seconds,
         )
-        if validated is None:
-            unauthorized(
-                "Недействительные данные сессии. Откройте приложение в Telegram.",
-                code="invalid_init_data",
-            )
-        user_id = get_user_id_from_validated(validated)
-        if user_id is None:
-            unauthorized("Не удалось определить пользователя.", code="invalid_init_data")
-        return user_id
+        if validated is not None:
+            user_id = get_user_id_from_validated(validated)
+            if user_id is not None:
+                return user_id
     return get_telegram_id(request)
 
 

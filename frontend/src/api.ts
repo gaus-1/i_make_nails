@@ -61,15 +61,13 @@ export function authHeaders(): HeadersInit {
   return h
 }
 
-const TELEGRAM_AUTH_MESSAGE = 'Откройте приложение в Telegram.'
-
 const ERROR_CODE_MESSAGES: Record<string, string> = {
   slot_busy: 'Это время уже занято, выберите другое.',
   booking_disabled: 'Запись временно отключена.',
   client_blocked: 'Онлайн-запись для вас недоступна.',
-  invalid_init_data: TELEGRAM_AUTH_MESSAGE,
-  missing_telegram_id: TELEGRAM_AUTH_MESSAGE,
-  invalid_telegram_id: TELEGRAM_AUTH_MESSAGE,
+  invalid_init_data: '',
+  missing_telegram_id: '',
+  invalid_telegram_id: '',
 }
 
 const SERVER_ERROR_MESSAGE = 'Временная ошибка. Попробуйте позже.'
@@ -81,14 +79,14 @@ export function normalizeApiError(text: string): string {
   if (/500|502|503|internal server error|got itself in trouble/.test(lower))
     return SERVER_ERROR_MESSAGE
   if (/telegram id is required|x-telegram-id header/.test(lower))
-    return TELEGRAM_AUTH_MESSAGE
+    return ''
   try {
     const j = JSON.parse(text) as { error?: string; detail?: string; message?: string; code?: string }
     const code = j.code
-    if (code && ERROR_CODE_MESSAGES[code]) return ERROR_CODE_MESSAGES[code]
+    if (code && ERROR_CODE_MESSAGES[code] !== undefined) return ERROR_CODE_MESSAGES[code]
     const result = j.error ?? j.detail ?? j.message ?? text
     if (typeof result === 'string' && /telegram id is required|x-telegram-id header/.test(result.toLowerCase()))
-      return TELEGRAM_AUTH_MESSAGE
+      return ''
     return result
   } catch {
     return text

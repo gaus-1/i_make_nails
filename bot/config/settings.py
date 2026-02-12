@@ -1,10 +1,15 @@
 """Конфигурация приложения из переменных окружения."""
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+    )
     """Параметры из env: токен бота, БД, мастер/админ, мини-апп."""
 
     telegram_bot_token: str = Field(..., alias="TELEGRAM_BOT_TOKEN")
@@ -30,11 +35,6 @@ class Settings(BaseSettings):
     # Мини-апп: dev — принимать X-Telegram-Id без проверки initData; иначе требовать initData.
     miniapp_auth: str = Field("prod", alias="MINIAPP_AUTH")
     init_data_ttl_seconds: int = Field(86400, alias="INIT_DATA_TTL_SECONDS")
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
 
 
 settings = Settings()

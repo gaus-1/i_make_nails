@@ -4,7 +4,9 @@ __pycache__/
 .pytest_cache/
 dev.db
 e2e.db
+e2e-*.db
 local.db
+test_db.db
 check_migrations.db
 .env
 logs/

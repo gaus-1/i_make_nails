@@ -6,13 +6,21 @@ Telegram-бот и мини-приложение для записи клиен�
 
 ---
 
+## Возможности
+
+**Клиент:** запись на дату/время, просмотр своих записей (день/неделя/месяц), отмена и перенос.
+
+**Мастер:** расписание дня/недели/месяца, список клиентов (имя, телефон, ссылка в Telegram), настройки (часы работы, слоты, таймзона), блокировки дат (отпуск, выходной).
+
+---
+
 ## Стек
 
-**Бэкенд:** Python 3.13, aiogram 3, aiohttp. БД: PostgreSQL (прод), SQLAlchemy 2, Alembic. Конфиг: Pydantic / pydantic-settings.
+**Бэкенд:** Python 3.13, aiogram 3, aiohttp. БД: PostgreSQL (прод) или SQLite (локально), SQLAlchemy 2, Alembic. Конфиг: Pydantic / pydantic-settings.
 
 **Фронт мини-аппа:** TypeScript, Vite, раздача статики из `static/` через aiohttp.
 
-**Тесты:** pytest (unit, integration), Vitest (frontend), Playwright (E2E). Качество: Ruff, Vulture (в CI), pre-commit (Ruff, TypeScript, проверка секретов и размера файлов).
+**Тесты:** pytest (unit, integration, load), Vitest (frontend), Playwright (E2E). Качество: Ruff, Vulture (в CI), pre-commit (Ruff, TypeScript, проверка секретов и размера файлов).
 
 ---
 
@@ -21,27 +29,30 @@ Telegram-бот и мини-приложение для записи клиен�
 ```
 ├── .github/workflows/      # CI: Ruff, pytest, Vitest, сборка и attestation
 ├── bot/                    # Бот и API мини-аппа
-│   ├── api/                # HTTP API: deps, schemas, miniapp/routes
+│   ├── api/                # HTTP API: deps, schemas, telegram_auth, miniapp/routes
 │   ├── config/             # Настройки из env
 │   ├── database/           # Движок и сессии БД
 │   ├── handlers/           # Обработчики Telegram (start и т.д.)
 │   ├── models/             # SQLAlchemy-модели
 │   └── services/           # Бизнес-логика: слоты, записи
 ├── frontend/               # Мини-апп
-│   ├── e2e/                # Playwright: клиент и мастер
-│   ├── scripts/            # E2E-сервер, сборка
+│   ├── e2e/                # Playwright: client.spec, master.spec
+│   ├── scripts/            # start-e2e-server.mjs
 │   └── src/                # Рендер, API, стили, тесты Vitest
 ├── scripts/                # check-frontend-tsc.mjs для pre-commit
 ├── alembic/                # Миграции БД
-├── tests/                  # pytest: unit, integration
+├── tests/                  # pytest
+│   ├── unit/               # appointment_service, schedule_service
+│   ├── integration/        # test_miniapp_api
+│   └── load/               # Нагрузочные тесты
 ├── web_server.py           # Точка входа: aiohttp, роуты, статика
 ├── Dockerfile              # Сборка: frontend → Python + static
 ├── Procfile, railway.json  # Деплой на Railway
-├── package.json            # Скрипты тестов из корня (npm test, test:all)
-└── .pre-commit-config.yaml # Ruff, pre-commit-hooks, проверка фронта
+├── package.json            # npm test, test:frontend, test:backend, test:all
+└── .pre-commit-config.yaml
 ```
 
-Каталог `static/` в репозиторий не входит: это артефакт сборки. Он создаётся при `npm run build` в `frontend/` и при деплое копируется из `frontend/dist` (Dockerfile или E2E-скрипт).
+Каталог `static/` — артефакт сборки, создаётся при `npm run build` и копируется из `frontend/dist` (Dockerfile или E2E-скрипт).
 
 ---
 
@@ -56,7 +67,9 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-В `.env` или в окружении задать: `TELEGRAM_BOT_TOKEN`, `DATABASE_URL`, `SECRET_KEY`, `MASTER_TELEGRAM_IDS`, `ADMIN_TELEGRAM_IDS`, `WEBHOOK_DOMAIN`. Для разработки мини-аппа: `MINIAPP_AUTH=dev` (запросы без валидного initData, по заголовку/query `X-Telegram-Id`).
+В `.env` или в окружении задать: `TELEGRAM_BOT_TOKEN`, `DATABASE_URL`, `SECRET_KEY`, `MASTER_TELEGRAM_IDS`, `ADMIN_TELEGRAM_IDS`, `WEBHOOK_DOMAIN`.
+
+Для локальной разработки: `DATABASE_URL=sqlite:///local.db`, `MINIAPP_AUTH=dev` (запросы без initData, по заголовку/query `X-Telegram-Id`).
 
 Запуск:
 
@@ -75,7 +88,7 @@ npm install
 npm run build
 ```
 
-Для деплоя образ копирует `frontend/dist` в `static/` при сборке.
+Скопировать `frontend/dist` в `static/` или запустить через Docker.
 
 ---
 
@@ -110,30 +123,24 @@ cd frontend
 npm run e2e
 ```
 
-Playwright сам собирает фронт, копирует в `static/`, поднимает сервер с `E2E_SERVER=1` и SQLite `e2e.db` (сид: один мастер, услуга, расписание). Ручной запуск сервера не нужен.
+Playwright собирает фронт, копирует в `static/`, поднимает сервер с `E2E_SERVER=1` и SQLite (сид: один мастер, расписание на 7 дней). На Windows при ошибке spawn можно запустить сервер вручную: `node frontend/scripts/start-e2e-server.mjs`, затем `E2E_BASE_URL=http://localhost:8765 npm run e2e`.
 
 ---
 
 ## Pre-commit
 
-При коммите запускаются: Ruff (линт и формат для Python), проверка TypeScript во фронте (`tsc --noEmit` при изменениях в `frontend/`), проверка конфликтов слияния, YAML, концы файлов, пробелы, размер добавляемых файлов (до 600 KB), детекция приватных ключей.
-
-Установка:
+При коммите: Ruff (линт и формат), проверка TypeScript (`tsc --noEmit` при изменениях в `frontend/`), YAML, концы файлов, детекция ключей.
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
 
-Разовый прогон по всем файлам: `pre-commit run --all-files`.
-
-Vulture (мёртвый код) выполняется только в CI, не в pre-commit.
+Разовый прогон: `pre-commit run --all-files`. Vulture — только в CI.
 
 ---
 
 ## Деплой (Railway)
-
-Через Railway CLI:
 
 ```bash
 npm i -g @railway/cli
@@ -142,4 +149,4 @@ railway link
 railway up --detach
 ```
 
-Root Directory сервиса — корень репозитория. Сборка по `Dockerfile`: фронт, затем образ Python с `static/` из `dist`. Старт: `alembic upgrade head && python web_server.py`.
+Root Directory — корень репозитория. Сборка по `Dockerfile`: фронт, образ Python с `static/` из `dist`. Старт: `alembic upgrade head && python web_server.py`.

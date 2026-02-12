@@ -1,6 +1,7 @@
 """Точка входа HTTP: aiohttp, API мини-аппа, раздача статики. При E2E_SERVER=1 бот не поднимается."""
 
 import asyncio
+import contextlib
 import os
 import subprocess
 import sys
@@ -171,6 +172,19 @@ async def create_app() -> web.Application:
     return app
 
 
+def _reset_e2e_db() -> None:
+    """Удалить E2E БД перед миграциями: sqlite:///e2e.db -> e2e.db в cwd."""
+    url = os.environ.get("DATABASE_URL", "")
+    if url.startswith("sqlite:///"):
+        db_path = url.replace("sqlite:///", "")
+        if not db_path.startswith("/") and ":" not in db_path[:2]:
+            root = Path(__file__).resolve().parent
+            path = root / db_path
+            if path.exists():
+                with contextlib.suppress(OSError):
+                    path.unlink()
+
+
 def _seed_e2e_db() -> None:
     """Очистить данные и заполнить БД для E2E: один мастер, расписание. Схема из миграций."""
     from datetime import time
@@ -210,6 +224,7 @@ def _seed_e2e_db() -> None:
 
 def main() -> None:
     if os.environ.get("E2E_SERVER") == "1":
+        _reset_e2e_db()
         _run_migrations()
         _seed_e2e_db()
     else:

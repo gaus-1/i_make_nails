@@ -406,11 +406,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   confirmBtn.addEventListener('click', async () => {
     if (!state.selectedSlotUtc) return
     const user = getTelegramUser()
-    if (!user) {
-      state.error = 'Откройте приложение в Telegram для записи.'
-      scheduleRender()
-      return
-    }
+    if (!user) return
     state.submitting = true
     state.error = null
     scheduleRender()
