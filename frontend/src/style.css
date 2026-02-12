@@ -626,6 +626,10 @@ body {
   text-align: center;
 }
 
+.shell__main--master .shell__card > .shell__section-title {
+  margin-bottom: 14px;
+}
+
 .shell__main--master .shell__period-tab {
   text-align: center;
   justify-content: center;

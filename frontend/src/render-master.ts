@@ -519,6 +519,16 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
     p.className = 'shell__section-caption'
     p.textContent = 'Загрузка…'
     card.appendChild(p)
+  } else if (!state.masterSettings) {
+    const p = document.createElement('p')
+    p.className = 'shell__section-caption'
+    p.textContent = 'Загрузка…'
+    card.appendChild(p)
+    setTimeout(() => {
+      if (state.masterTab === 'settings' && !state.masterSettings && !state.masterLoading) {
+        loadMasterSettings(scheduleRender)
+      }
+    }, 300)
   } else if (state.masterSettings) {
     const s = state.masterSettings
     const bookingWrap = document.createElement('div')
