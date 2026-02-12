@@ -601,6 +601,10 @@ body {
   flex: none;
 }
 
+.shell__period-tabs--master .shell__period-tab:active {
+  transform: none;
+}
+
 .shell__main--master .shell__section-title,
 .shell__main--master .shell__section-caption,
 .shell__main--master .shell__day-card-title {
@@ -757,6 +761,12 @@ body {
 
 .shell__date-input {
   margin-bottom: 10px;
+}
+
+.shell__section.master-schedule .shell__date-input {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .shell__settings-ws-title {
