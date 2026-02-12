@@ -65,10 +65,9 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
   slot_busy: 'Это время уже занято, выберите другое.',
   booking_disabled: 'Запись временно отключена.',
   client_blocked: 'Онлайн-запись для вас недоступна.',
-  invalid_init_data:
-    'Сессия истекла. Закройте и откройте мини-приложение заново из бота.',
-  missing_telegram_id: 'Откройте приложение из бота в Telegram.',
-  invalid_telegram_id: 'Ошибка авторизации. Откройте приложение из бота.',
+  invalid_init_data: 'Не удалось загрузить. Нажмите «Повторить».',
+  missing_telegram_id: 'Не удалось загрузить. Нажмите «Повторить».',
+  invalid_telegram_id: 'Не удалось загрузить. Нажмите «Повторить».',
 }
 
 const SERVER_ERROR_MESSAGE = 'Временная ошибка. Попробуйте позже.'
@@ -97,22 +96,22 @@ export function normalizeApiError(text: string): string {
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
-  retries = 1
+  retries = 3
 ): Promise<Response> {
   try {
     const r = await fetch(url, init)
     if (r.ok || r.status < 500 || retries === 0) return r
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 600))
     return fetchWithRetry(url, init, retries - 1)
   } catch {
     if (retries === 0) throw new Error(SERVER_ERROR_MESSAGE)
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 600))
     return fetchWithRetry(url, init, retries - 1)
   }
 }
 
 export async function apiGet<T>(url: string): Promise<T> {
-  const r = await fetchWithRetry(url, { headers: authHeaders() })
+  const r = await fetchWithRetry(url, { headers: authHeaders() }, 3)
   const text = await r.text()
   if (!r.ok) throw new Error(normalizeApiError(text))
   try {
@@ -130,7 +129,7 @@ export async function apiPost<T>(url: string, body?: object): Promise<T> {
       headers: authHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     },
-    1
+    2
   )
   const text = await r.text()
   if (!r.ok) throw new Error(normalizeApiError(text))
@@ -149,7 +148,7 @@ export async function apiPatch<T>(url: string, body: object): Promise<T> {
       headers: authHeaders(),
       body: JSON.stringify(body),
     },
-    1
+    2
   )
   const text = await r.text()
   if (!r.ok) throw new Error(normalizeApiError(text))

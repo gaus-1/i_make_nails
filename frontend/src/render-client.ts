@@ -30,11 +30,10 @@ export async function loadSlots(dateStr: string, scheduleRender: () => void): Pr
     if (state.selectedDate !== dateStr) return
     state.slots = data.slots
     state.slotDurationMinutes = data.slot_duration_minutes ?? null
-  } catch (e) {
+  } catch {
     if (state.selectedDate !== dateStr) return
     state.slots = []
     state.slotDurationMinutes = null
-    state.error = e instanceof Error ? e.message : String(e)
   } finally {
     state.loading = false
     scheduleRender()
@@ -47,9 +46,8 @@ export async function loadMyAppointments(scheduleRender: () => void): Promise<vo
   try {
     const data = await apiGet<{ appointments: Appointment[] }>(API.myAppointments)
     state.appointments = data.appointments
-  } catch (e) {
+  } catch {
     state.appointments = []
-    state.error = e instanceof Error ? e.message : String(e)
   }
   state.loading = false
   scheduleRender()
@@ -188,8 +186,7 @@ function renderMyAppointments(main: HTMLElement, scheduleRender: () => void): vo
                 state.success = 'Запись отменена.'
                 await loadMyAppointments(scheduleRender)
                 scheduleRender()
-              } catch (e) {
-                state.error = e instanceof Error ? e.message : String(e)
+              } catch {
                 scheduleRender()
               }
             })
@@ -341,9 +338,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         if (state.slots.length === 0) {
           const noSlots = document.createElement('p')
           noSlots.className = 'shell__hint'
-          noSlots.textContent = state.error
-            ? 'Не удалось загрузить слоты. Попробуйте ещё раз.'
-            : 'Нет свободных слотов на эту дату.'
+          noSlots.textContent = 'Нет свободных слотов на эту дату.'
           calendarWrap.appendChild(noSlots)
         } else {
           for (const slot of state.slots) {
@@ -431,8 +426,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         state.selectedDate = null
       }
       scheduleRender()
-    } catch (e) {
-      state.error = e instanceof Error ? e.message : String(e)
+    } catch {
       scheduleRender()
     } finally {
       state.submitting = false
@@ -488,26 +482,6 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   messagesZone.className = 'shell__messages'
   messagesZone.setAttribute('aria-live', 'polite')
   messagesZone.setAttribute('aria-atomic', 'true')
-  if (state.error) {
-    const errWrap = document.createElement('div')
-    errWrap.className = 'shell__error-wrap'
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.error
-    errWrap.appendChild(err)
-    const retryBtn = document.createElement('button')
-    retryBtn.className = 'shell__pill shell__pill--primary'
-    retryBtn.type = 'button'
-    retryBtn.textContent = 'Повторить'
-    retryBtn.addEventListener('click', async () => {
-      state.error = null
-      scheduleRender()
-      if (state.view === 'my') await loadMyAppointments(scheduleRender)
-      else await loadSlots(state.selectedDate ?? toYYYYMMDD(new Date()), scheduleRender)
-    })
-    errWrap.appendChild(retryBtn)
-    messagesZone.appendChild(errWrap)
-  }
   if (state.success) {
     const ok = document.createElement('p')
     ok.className = 'shell__success'

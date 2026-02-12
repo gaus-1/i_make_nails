@@ -23,13 +23,6 @@ function openTelegramChat(telegramId: number): void {
     window.location.href = url
   }
 }
-const TIMEZONES = [
-  'Europe/Moscow',
-  'Europe/Samara',
-  'Asia/Yekaterinburg',
-  'Asia/Novosibirsk',
-]
-
 /** Обёртка: выставляет masterLoading и перерисовывает до и после загрузки. */
 async function withMasterLoading(
   scheduleRender: () => void,
@@ -128,12 +121,11 @@ async function loadMasterAppointments(scheduleRender: () => void): Promise<void>
         state.masterSlotsByDate = {}
         state.masterSlotDurationMinutes = slotsRes.slot_duration_minutes ?? null
       }
-    } catch (e) {
+    } catch {
       if (state.masterTab !== tab) return
       state.masterAppointments = []
       state.masterSlots = []
       state.masterSlotsByDate = {}
-      state.masterError = e instanceof Error ? e.message : String(e)
     }
   })
 }
@@ -145,10 +137,9 @@ async function loadMasterClients(scheduleRender: () => void): Promise<void> {
       const data = await apiGet<{ clients: MasterClient[] }>(API.masterClients)
       if (state.masterTab !== tab) return
       state.masterClients = data.clients
-    } catch (e) {
+    } catch {
       if (state.masterTab !== tab) return
       state.masterClients = []
-      state.masterError = e instanceof Error ? e.message : String(e)
     }
   })
 }
@@ -160,10 +151,9 @@ async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
       const data = await apiGet<MasterSettings>(API.masterSettings)
       if (state.masterTab !== tab) return
       state.masterSettings = data
-    } catch (e) {
+    } catch {
       if (state.masterTab !== tab) return
       state.masterSettings = null
-      state.masterError = e instanceof Error ? e.message : String(e)
     }
   })
 }
@@ -187,10 +177,9 @@ async function loadMasterBlockedSlots(scheduleRender: () => void): Promise<void>
       )
       if (state.masterTab !== tab) return
       state.masterBlockedSlots = data.blocked_slots
-    } catch (e) {
+    } catch {
       if (state.masterTab !== tab) return
       state.masterBlockedSlots = []
-      state.masterError = e instanceof Error ? e.message : String(e)
     }
   })
 }
@@ -215,11 +204,9 @@ async function createBlockedSlot(
     })
     const text = await r.text()
     if (!r.ok) throw new Error(normalizeApiError(text))
-    state.masterError = null
     await loadMasterBlockedSlots(scheduleRender)
     onSuccess?.()
-  } catch (e) {
-    state.masterError = e instanceof Error ? e.message : String(e)
+  } catch {
     scheduleRender()
   }
 }
@@ -230,9 +217,8 @@ async function deleteBlockedSlot(id: number, scheduleRender: () => void): Promis
     const text = await r.text()
     if (!r.ok) throw new Error(normalizeApiError(text))
     state.masterBlockedSlots = state.masterBlockedSlots.filter((b) => b.id !== id)
-    state.masterError = null
-  } catch (e) {
-    state.masterError = e instanceof Error ? e.message : String(e)
+  } catch {
+    /* без сообщения пользователю */
   }
   scheduleRender()
 }
@@ -259,8 +245,8 @@ async function patchClientBookingAllowed(
     })
     const idx = state.masterClients.findIndex((c) => c.id === clientId)
     if (idx >= 0) state.masterClients[idx] = updated
-  } catch (e) {
-    state.masterError = e instanceof Error ? e.message : String(e)
+  } catch {
+    /* без сообщения пользователю */
   }
   scheduleRender()
 }
@@ -279,12 +265,11 @@ async function patchMasterSettings(
     if (!r.ok) throw new Error(normalizeApiError(text))
     try {
       state.masterSettings = JSON.parse(text) as MasterSettings
-      state.masterError = null
     } catch {
-      state.masterError = normalizeApiError(text)
+      /* без сообщения пользователю */
     }
-  } catch (e) {
-    state.masterError = e instanceof Error ? e.message : String(e)
+  } catch {
+    /* без сообщения пользователю */
   }
   scheduleRender()
 }
@@ -551,26 +536,6 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
     bookingWrap.appendChild(bookingLabel)
     card.appendChild(bookingWrap)
 
-    const tzWrap = document.createElement('div')
-    tzWrap.className = 'shell__form-block'
-    const tzLabel = document.createElement('label')
-    tzLabel.textContent = 'Часовой пояс '
-    const tzSelect = document.createElement('select')
-    tzSelect.className = 'shell__input'
-    for (const tz of TIMEZONES) {
-      const opt = document.createElement('option')
-      opt.value = tz
-      opt.textContent = tz
-      if (tz === s.timezone) opt.selected = true
-      tzSelect.appendChild(opt)
-    }
-    tzSelect.addEventListener('change', () => {
-      patchMasterSettings({ timezone: tzSelect.value }, scheduleRender)
-    })
-    tzLabel.appendChild(tzSelect)
-    tzWrap.appendChild(tzLabel)
-    card.appendChild(tzWrap)
-
     const wsTitle = document.createElement('h3')
     wsTitle.className = 'shell__section-caption shell__settings-ws-title'
     wsTitle.textContent = 'Рабочие часы по дням'
@@ -745,28 +710,6 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
   messagesZone.className = 'shell__messages'
   messagesZone.setAttribute('aria-live', 'polite')
   messagesZone.setAttribute('aria-atomic', 'true')
-  if (state.masterError) {
-    const errWrap = document.createElement('div')
-    errWrap.className = 'shell__error-wrap'
-    const err = document.createElement('p')
-    err.className = 'shell__error'
-    err.textContent = state.masterError
-    errWrap.appendChild(err)
-    const retryBtn = document.createElement('button')
-    retryBtn.className = 'shell__pill shell__pill--primary'
-    retryBtn.type = 'button'
-    retryBtn.textContent = 'Повторить'
-    retryBtn.addEventListener('click', async () => {
-      state.masterError = null
-      scheduleRender()
-      if (state.masterTab === 'schedule') await loadMasterAppointments(scheduleRender)
-      else if (state.masterTab === 'clients') await loadMasterClients(scheduleRender)
-      else if (state.masterTab === 'settings') await loadMasterSettings(scheduleRender)
-      else await loadMasterBlockedSlots(scheduleRender)
-    })
-    errWrap.appendChild(retryBtn)
-    messagesZone.appendChild(errWrap)
-  }
   main.appendChild(messagesZone)
 
   const panel = document.createElement('div')
