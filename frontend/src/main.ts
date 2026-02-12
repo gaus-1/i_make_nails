@@ -2,7 +2,7 @@
 
 import './style.css'
 
-import { API, apiGet } from './api'
+import { API, apiGet, getTelegramUser } from './api'
 import { state } from './state'
 import { renderClient } from './render-client'
 import { initMaster, renderMaster } from './render-master'
@@ -33,6 +33,8 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
 function switchToMasterView(): void {
   const url = new URL(window.location.href)
   url.searchParams.set('view', 'master')
+  const user = getTelegramUser()
+  if (user) url.searchParams.set('telegram_id', String(user.id))
   window.location.href = url.toString()
 }
 

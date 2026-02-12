@@ -65,9 +65,10 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
   slot_busy: 'Это время уже занято, выберите другое.',
   booking_disabled: 'Запись временно отключена.',
   client_blocked: 'Онлайн-запись для вас недоступна.',
-  invalid_init_data: '',
-  missing_telegram_id: '',
-  invalid_telegram_id: '',
+  invalid_init_data:
+    'Сессия истекла. Закройте и откройте мини-приложение заново из бота.',
+  missing_telegram_id: 'Откройте приложение из бота в Telegram.',
+  invalid_telegram_id: 'Ошибка авторизации. Откройте приложение из бота.',
 }
 
 const SERVER_ERROR_MESSAGE = 'Временная ошибка. Попробуйте позже.'
@@ -79,22 +80,39 @@ export function normalizeApiError(text: string): string {
   if (/500|502|503|internal server error|got itself in trouble/.test(lower))
     return SERVER_ERROR_MESSAGE
   if (/telegram id is required|x-telegram-id header/.test(lower))
-    return ''
+    return ERROR_CODE_MESSAGES.missing_telegram_id
   try {
     const j = JSON.parse(text) as { error?: string; detail?: string; message?: string; code?: string }
     const code = j.code
     if (code && ERROR_CODE_MESSAGES[code] !== undefined) return ERROR_CODE_MESSAGES[code]
     const result = j.error ?? j.detail ?? j.message ?? text
     if (typeof result === 'string' && /telegram id is required|x-telegram-id header/.test(result.toLowerCase()))
-      return ''
+      return ERROR_CODE_MESSAGES.missing_telegram_id
     return result
   } catch {
     return text
   }
 }
 
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  retries = 1
+): Promise<Response> {
+  try {
+    const r = await fetch(url, init)
+    if (r.ok || r.status < 500 || retries === 0) return r
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    return fetchWithRetry(url, init, retries - 1)
+  } catch {
+    if (retries === 0) throw new Error(SERVER_ERROR_MESSAGE)
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    return fetchWithRetry(url, init, retries - 1)
+  }
+}
+
 export async function apiGet<T>(url: string): Promise<T> {
-  const r = await fetch(url, { headers: authHeaders() })
+  const r = await fetchWithRetry(url, { headers: authHeaders() })
   const text = await r.text()
   if (!r.ok) throw new Error(normalizeApiError(text))
   try {
@@ -105,11 +123,15 @@ export async function apiGet<T>(url: string): Promise<T> {
 }
 
 export async function apiPost<T>(url: string, body?: object): Promise<T> {
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  const r = await fetchWithRetry(
+    url,
+    {
+      method: 'POST',
+      headers: authHeaders(),
+      body: body ? JSON.stringify(body) : undefined,
+    },
+    1
+  )
   const text = await r.text()
   if (!r.ok) throw new Error(normalizeApiError(text))
   try {
@@ -120,11 +142,15 @@ export async function apiPost<T>(url: string, body?: object): Promise<T> {
 }
 
 export async function apiPatch<T>(url: string, body: object): Promise<T> {
-  const r = await fetch(url, {
-    method: 'PATCH',
-    headers: authHeaders(),
-    body: JSON.stringify(body),
-  })
+  const r = await fetchWithRetry(
+    url,
+    {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify(body),
+    },
+    1
+  )
   const text = await r.text()
   if (!r.ok) throw new Error(normalizeApiError(text))
   try {

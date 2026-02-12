@@ -489,10 +489,24 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   messagesZone.setAttribute('aria-live', 'polite')
   messagesZone.setAttribute('aria-atomic', 'true')
   if (state.error) {
+    const errWrap = document.createElement('div')
+    errWrap.className = 'shell__error-wrap'
     const err = document.createElement('p')
     err.className = 'shell__error'
     err.textContent = state.error
-    messagesZone.appendChild(err)
+    errWrap.appendChild(err)
+    const retryBtn = document.createElement('button')
+    retryBtn.className = 'shell__pill shell__pill--primary'
+    retryBtn.type = 'button'
+    retryBtn.textContent = 'Повторить'
+    retryBtn.addEventListener('click', async () => {
+      state.error = null
+      scheduleRender()
+      if (state.view === 'my') await loadMyAppointments(scheduleRender)
+      else await loadSlots(state.selectedDate ?? toYYYYMMDD(new Date()), scheduleRender)
+    })
+    errWrap.appendChild(retryBtn)
+    messagesZone.appendChild(errWrap)
   }
   if (state.success) {
     const ok = document.createElement('p')

@@ -746,10 +746,26 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
   messagesZone.setAttribute('aria-live', 'polite')
   messagesZone.setAttribute('aria-atomic', 'true')
   if (state.masterError) {
+    const errWrap = document.createElement('div')
+    errWrap.className = 'shell__error-wrap'
     const err = document.createElement('p')
     err.className = 'shell__error'
     err.textContent = state.masterError
-    messagesZone.appendChild(err)
+    errWrap.appendChild(err)
+    const retryBtn = document.createElement('button')
+    retryBtn.className = 'shell__pill shell__pill--primary'
+    retryBtn.type = 'button'
+    retryBtn.textContent = 'Повторить'
+    retryBtn.addEventListener('click', async () => {
+      state.masterError = null
+      scheduleRender()
+      if (state.masterTab === 'schedule') await loadMasterAppointments(scheduleRender)
+      else if (state.masterTab === 'clients') await loadMasterClients(scheduleRender)
+      else if (state.masterTab === 'settings') await loadMasterSettings(scheduleRender)
+      else await loadMasterBlockedSlots(scheduleRender)
+    })
+    errWrap.appendChild(retryBtn)
+    messagesZone.appendChild(errWrap)
   }
   main.appendChild(messagesZone)
 
