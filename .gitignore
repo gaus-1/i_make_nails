@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+*.db
 dev.db
 e2e.db
 local.db

@@ -493,14 +493,10 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
   messagesZone.setAttribute('aria-live', 'polite')
   messagesZone.setAttribute('aria-atomic', 'true')
   if (state.error) {
-    const isTelegramIdError =
-      state.error.includes('Telegram id is required') || state.error.includes('X-Telegram-Id')
-    if (!isTelegramIdError) {
-      const err = document.createElement('p')
-      err.className = 'shell__error'
-      err.textContent = state.error
-      messagesZone.appendChild(err)
-    }
+    const err = document.createElement('p')
+    err.className = 'shell__error'
+    err.textContent = state.error
+    messagesZone.appendChild(err)
   }
   if (state.success) {
     const ok = document.createElement('p')

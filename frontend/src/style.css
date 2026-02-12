@@ -137,10 +137,41 @@ body {
   align-items: center;
 }
 
+.shell__day-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.shell__day-cards-container--month {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.shell__day-cards-container--month .shell__day-card {
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.shell__day-cards-container--month .shell__day-card:nth-child(1),
+.shell__day-cards-container--month .shell__day-card:nth-child(2) {
+  border-top: none;
+  padding-top: 0;
+}
+
 .shell__day-card {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.shell__day-cards-container .shell__day-card:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .shell__day-card-title {
@@ -320,7 +351,7 @@ body {
 .shell__calendar-wrap {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -328,7 +359,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -338,12 +369,12 @@ body {
 }
 
 .shell__calendar-nav button {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   border: 1px solid var(--border-subtle);
   background: #ffffff;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -366,8 +397,8 @@ body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
-  margin-bottom: 6px;
-  font-size: 11px;
+  margin-bottom: 8px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
   text-align: center;
@@ -380,19 +411,19 @@ body {
 .shell__cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
 .shell__cal-cell {
   aspect-ratio: 1;
-  max-width: 44px;
+  max-width: 50px;
   min-width: 0;
   margin: 0 auto;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   background: transparent;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--text-main);
   cursor: pointer;
@@ -750,12 +781,49 @@ select:focus-visible {
   }
 
   .shell__cal-cell {
-    max-width: 38px;
-    font-size: 12px;
+    max-width: 42px;
+    font-size: 18px;
+  }
+
+  .shell__calendar-header span {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 320px) {
+  #app {
+    padding: 10px 6px 16px;
+  }
+
+  .shell {
+    padding: 10px 6px 12px;
+  }
+
+  .shell__card {
+    padding: 12px 10px 14px;
+  }
+
+  .shell__cal-grid {
+    gap: 4px;
+  }
+
+  .shell__cal-cell {
+    max-width: 40px;
+    font-size: 17px;
   }
 
   .shell__calendar-header span {
     font-size: 12px;
+  }
+
+  .shell__calendar-nav button {
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+  }
+
+  .shell__day-cards-container--month {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -787,7 +855,22 @@ select:focus-visible {
   }
 
   .shell__period-tabs--master {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    grid-template-columns: unset;
+  }
+
+  .shell__period-tabs--master::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shell__period-tabs--master .shell__period-tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
   }
 
   .shell__period-tab {

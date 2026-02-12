@@ -416,6 +416,8 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
     p.textContent = 'Загрузка…'
     card.appendChild(p)
   } else if (state.masterScheduleView === 'week') {
+    const container = document.createElement('div')
+    container.className = 'shell__day-cards-container'
     const dayDates: string[] = []
     for (let i = 0; i < 7; i++) {
       dayDates.push(toYYYYMMDD(addDays(parseDateStr(state.masterScheduleDate), i)))
@@ -433,9 +435,12 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
       )
       const daySlots = state.masterSlotsByDate[dateStr] ?? []
       renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes)
-      card.appendChild(dayCard)
+      container.appendChild(dayCard)
     }
+    card.appendChild(container)
   } else if (state.masterScheduleView === 'month') {
+    const container = document.createElement('div')
+    container.className = 'shell__day-cards-container shell__day-cards-container--month'
     const dayDates = getMonthDayDates(state.masterScheduleDate)
     for (const dateStr of dayDates) {
       const dayCard = document.createElement('div')
@@ -450,8 +455,9 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
       )
       const daySlots = state.masterSlotsByDate[dateStr] ?? []
       renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes)
-      card.appendChild(dayCard)
+      container.appendChild(dayCard)
     }
+    card.appendChild(container)
   } else {
     renderAppointmentList(
       card,

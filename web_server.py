@@ -153,8 +153,14 @@ async def create_app() -> web.Application:
 
         app.router.add_get("/", index)
         app.router.add_static("/assets", str(static_dir / "assets"))
-        # Иконка и прочие файлы из корня dist (например /vite.svg)
-        app.router.add_static("/", str(static_dir), name="static_root")
+        # Иконка из корня dist — явный маршрут, чтобы не перехватывать /api
+        vite_svg = static_dir / "vite.svg"
+        if vite_svg.exists():
+
+            async def _vite_svg(_: web.Request) -> web.FileResponse:
+                return web.FileResponse(vite_svg)
+
+            app.router.add_get("/vite.svg", _vite_svg)
     else:
 
         async def no_static(_request: web.Request) -> web.Response:
@@ -170,13 +176,11 @@ def _seed_e2e_db() -> None:
     from datetime import time
 
     from sqlalchemy import delete
-    from sqlalchemy.orm import Session
 
-    from bot.database.engine import SessionLocal
+    from bot.api.deps import get_db
     from bot.models import Appointment, BlockedSlot, Client, Master, Service, WorkSchedule
 
-    db: Session = SessionLocal()
-    try:
+    with get_db() as db:
         db.execute(delete(Appointment))
         db.execute(delete(BlockedSlot))
         db.execute(delete(WorkSchedule))
@@ -202,8 +206,6 @@ def _seed_e2e_db() -> None:
                 )
             )
         db.commit()
-    finally:
-        db.close()
 
 
 def main() -> None:
