@@ -18,6 +18,7 @@ export const API = {
     `/api/miniapp/master/blocked-slots?date_from=${dateFrom}&date_to=${dateTo}`,
   masterBlockedSlotsPost: '/api/miniapp/master/blocked-slots',
   masterBlockedSlot: (id: number) => `/api/miniapp/master/blocked-slots/${id}`,
+  masterRescheduleAppointment: (id: number) => `/api/miniapp/master/appointments/${id}`,
 }
 
 export type Slot = { start_utc_iso: string }
@@ -71,6 +72,8 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
 }
 
 const SERVER_ERROR_MESSAGE = 'Временная ошибка. Попробуйте позже.'
+const TIMEOUT_MESSAGE = 'Время ожидания истекло. Попробуйте ещё раз.'
+const FETCH_TIMEOUT_MS = 15000
 
 export function normalizeApiError(text: string): string {
   if (text.trimStart().toLowerCase().startsWith('<!doctype') || text.includes('</html>'))
@@ -93,20 +96,39 @@ export function normalizeApiError(text: string): string {
   }
 }
 
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const r = await fetch(url, { ...init, signal: controller.signal })
+    clearTimeout(timeoutId)
+    return r
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e instanceof Error && e.name === 'AbortError') throw new Error(TIMEOUT_MESSAGE)
+    throw e
+  }
+}
+
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
-  retries = 3
+  retries = 3,
+  timeoutMs = FETCH_TIMEOUT_MS
 ): Promise<Response> {
   try {
-    const r = await fetch(url, init)
+    const r = await fetchWithTimeout(url, init, timeoutMs)
     if (r.ok || r.status < 500 || retries === 0) return r
     await new Promise((resolve) => setTimeout(resolve, 600))
-    return fetchWithRetry(url, init, retries - 1)
-  } catch {
-    if (retries === 0) throw new Error(SERVER_ERROR_MESSAGE)
+    return fetchWithRetry(url, init, retries - 1, timeoutMs)
+  } catch (e) {
+    if (retries === 0) throw e
     await new Promise((resolve) => setTimeout(resolve, 600))
-    return fetchWithRetry(url, init, retries - 1)
+    return fetchWithRetry(url, init, retries - 1, timeoutMs)
   }
 }
 

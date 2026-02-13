@@ -131,7 +131,7 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
     master = Master(
         timezone="Europe/Moscow",
         booking_enabled=True,
-        slot_duration_minutes=120,
+        slot_duration_minutes=90,
     )
     db.add(master)
     db.flush()
@@ -148,7 +148,7 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
         client_id=client_model.id,
         service_id=None,
         datetime_start=start_local,
-        datetime_end=start_local + timedelta(minutes=120),
+        datetime_end=start_local + timedelta(minutes=90),
         status="confirmed",
         source="test",
     )
@@ -334,6 +334,91 @@ async def test_reschedule_appointment(
             "11:00" in my_payload["appointments"][0]["datetime_start_utc"]
             or "11" in my_payload["appointments"][0]["datetime_start_utc"]
         )
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_master_reschedule_appointment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Мастер переносит запись на новое время; не-мастер получает 403; занятый слот 409."""
+    db = setup_in_memory_session(monkeypatch)
+    monkeypatch.setattr(settings, "master_telegram_ids", "111")
+    monkeypatch.setattr(settings, "admin_telegram_ids", "222")
+    monkeypatch.setattr(settings, "miniapp_auth", "dev")
+
+    master = Master(timezone="Europe/Moscow", booking_enabled=True, slot_duration_minutes=60)
+    db.add(master)
+    db.flush()
+    today = date(2026, 2, 10)
+    ws = WorkSchedule(
+        master_id=master.id,
+        day_of_week=today.weekday(),
+        time_start=time(10, 0),
+        time_end=time(14, 0),
+    )
+    db.add(ws)
+    client_model = Client(master_id=master.id, telegram_id=555, name="Клиент", phone=None)
+    db.add(client_model)
+    db.flush()
+    start_utc = datetime(2030, 2, 10, 8, 0, tzinfo=UTC)
+    appt = Appointment(
+        master_id=master.id,
+        client_id=client_model.id,
+        service_id=None,
+        datetime_start=start_utc,
+        datetime_end=start_utc + timedelta(minutes=60),
+        status="confirmed",
+        source="miniapp",
+    )
+    db.add(appt)
+    db.commit()
+    appt_id = appt.id
+    new_slot_iso = "2030-02-10T11:00:00+00:00"
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+
+    try:
+        resp = await client.patch(
+            f"/api/miniapp/master/appointments/{appt_id}",
+            headers={"X-Telegram-Id": "111"},
+            json={"slot_start_utc": new_slot_iso},
+        )
+        assert resp.status == 200
+        payload = await resp.json()
+        assert (
+            "2030-02-10" in payload["datetime_start_utc"] and "11" in payload["datetime_start_utc"]
+        )
+
+        resp = await client.patch(
+            f"/api/miniapp/master/appointments/{appt_id}",
+            headers={"X-Telegram-Id": "555"},
+            json={"slot_start_utc": "2030-02-10T12:00:00+00:00"},
+        )
+        assert resp.status == 403
+
+        start2 = datetime(2030, 2, 10, 10, 0, tzinfo=UTC)
+        appt2 = Appointment(
+            master_id=master.id,
+            client_id=client_model.id,
+            service_id=None,
+            datetime_start=start2,
+            datetime_end=start2 + timedelta(minutes=60),
+            status="confirmed",
+            source="miniapp",
+        )
+        db.add(appt2)
+        db.commit()
+        resp = await client.patch(
+            f"/api/miniapp/master/appointments/{appt2.id}",
+            headers={"X-Telegram-Id": "111"},
+            json={"slot_start_utc": "2030-02-10T11:00:00+00:00"},
+        )
+        assert resp.status == 409
     finally:
         await client.close()
 

@@ -15,7 +15,7 @@ class Master(TimestampMixin, Base):
 
     timezone: Mapped[str] = mapped_column(String(64), default="Europe/Moscow")
     booking_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    slot_duration_minutes: Mapped[int] = mapped_column(Integer, default=120)
+    slot_duration_minutes: Mapped[int] = mapped_column(Integer, default=90)
 
     services: Mapped[list["Service"]] = relationship(back_populates="master")
     clients: Mapped[list["Client"]] = relationship(back_populates="master")

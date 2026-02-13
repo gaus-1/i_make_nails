@@ -30,7 +30,7 @@ class SlotsResponse(BaseModel):
 
     date: str = Field(..., description="Дата, для которой рассчитаны слоты, в формате YYYY-MM-DD.")
     slots: list[SlotOut]
-    slot_duration_minutes: int = Field(120, description="Длительность одного окна в минутах.")
+    slot_duration_minutes: int = Field(90, description="Длительность одного окна в минутах.")
 
 
 class AppointmentOut(BaseModel):
@@ -130,7 +130,7 @@ class MasterSettingsOut(BaseModel):
 
     booking_enabled: bool
     timezone: str
-    slot_duration_minutes: int = 120
+    slot_duration_minutes: int = 90
     work_schedule: list[WorkScheduleItemOut]
 
 

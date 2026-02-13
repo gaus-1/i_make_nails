@@ -88,6 +88,8 @@ body {
   justify-content: center;
   border-radius: var(--radius-pill);
   padding: 8px 14px;
+  min-height: 44px;
+  min-width: 44px;
   font-size: 13px;
   font-weight: 500;
   border: 1px solid transparent;
@@ -382,8 +384,10 @@ body {
 }
 
 .shell__calendar-nav button {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 999px;
   border: 1px solid var(--border-subtle);
   background: #ffffff;
@@ -431,7 +435,8 @@ body {
 .shell__cal-cell {
   aspect-ratio: 1;
   max-width: 50px;
-  min-width: 0;
+  min-width: 44px;
+  min-height: 44px;
   margin: 0 auto;
   border: none;
   border-radius: 14px;
@@ -474,6 +479,7 @@ body {
 .shell__day {
   flex: 1 1 0;
   min-width: 36px;
+  min-height: 44px;
   max-width: 52px;
   padding: 8px 4px;
   border-radius: 12px;
@@ -484,7 +490,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
+  touch-action: manipulation;
 }
 
 .shell__day--active {
@@ -1010,6 +1018,17 @@ select:focus-visible {
 
   .shell {
     max-width: 480px;
+  }
+}
+
+@media (min-width: 768px) {
+  #app {
+    padding: 24px 20px 40px;
+  }
+
+  .shell {
+    max-width: 480px;
+    margin: 0 auto;
   }
 }
 

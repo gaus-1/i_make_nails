@@ -47,7 +47,7 @@ def _ensure_single_master() -> None:
         master = Master(
             timezone="Europe/Moscow",
             booking_enabled=True,
-            slot_duration_minutes=120,
+            slot_duration_minutes=90,
         )
         db.add(master)
         db.flush()
@@ -206,7 +206,7 @@ def _seed_e2e_db() -> None:
         master = Master(
             timezone="Europe/Moscow",
             booking_enabled=True,
-            slot_duration_minutes=120,
+            slot_duration_minutes=90,
         )
         db.add(master)
         db.flush()

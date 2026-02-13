@@ -184,6 +184,17 @@ async function loadMasterBlockedSlots(scheduleRender: () => void): Promise<void>
   })
 }
 
+async function loadMasterRescheduleSlots(dateStr: string, scheduleRender: () => void): Promise<void> {
+  try {
+    const data = await apiGet<{ slots: Slot[] }>(API.slots(dateStr))
+    if (state.masterRescheduleAppointmentId === null) return
+    state.masterRescheduleSlots = data.slots
+  } catch {
+    state.masterRescheduleSlots = []
+  }
+  scheduleRender()
+}
+
 async function createBlockedSlot(
   dateStart: string,
   dateEnd: string,
@@ -278,7 +289,8 @@ function renderAppointmentList(
   container: HTMLElement,
   appointments: MasterAppointment[],
   showSlots: Slot[],
-  slotDurationMinutes: number | null
+  slotDurationMinutes: number | null,
+  scheduleRender: () => void
 ): void {
   const subApp = document.createElement('h3')
   subApp.className = 'shell__section-caption shell__settings-ws-title'
@@ -311,6 +323,22 @@ function renderAppointmentList(
         writeBtn.textContent = 'Написать'
         writeBtn.addEventListener('click', () => openTelegramChat(a.client_telegram_id!))
         item.appendChild(writeBtn)
+      }
+      const isFutureConfirmed =
+        a.status === 'confirmed' && new Date(a.datetime_local) > new Date()
+      if (isFutureConfirmed) {
+        const rescheduleBtn = document.createElement('button')
+        rescheduleBtn.type = 'button'
+        rescheduleBtn.className = 'shell__pill shell__pill--small'
+        rescheduleBtn.textContent = 'Перенести'
+        rescheduleBtn.addEventListener('click', async () => {
+          state.masterRescheduleAppointmentId = a.id
+          state.masterRescheduleDate = a.datetime_local.slice(0, 10)
+          state.masterRescheduleSlots = []
+          scheduleRender()
+          await loadMasterRescheduleSlots(state.masterRescheduleDate!, scheduleRender)
+        })
+        item.appendChild(rescheduleBtn)
       }
       list.appendChild(item)
     }
@@ -395,6 +423,51 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
   viewTabs.appendChild(weekBtn)
   viewTabs.appendChild(monthBtn)
   card.appendChild(viewTabs)
+  if (state.masterRescheduleAppointmentId != null) {
+    const rescheduleBlock = document.createElement('div')
+    rescheduleBlock.className = 'shell__form-block'
+    const rescheduleTitle = document.createElement('p')
+    rescheduleTitle.className = 'shell__section-caption'
+    rescheduleTitle.textContent = 'Перенести запись на:'
+    rescheduleBlock.appendChild(rescheduleTitle)
+    const slotsRow = document.createElement('div')
+    slotsRow.className = 'shell__slots-row'
+    for (const slot of state.masterRescheduleSlots) {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'shell__pill shell__pill--small'
+      btn.textContent = formatSlotTime(slot.start_utc_iso)
+      btn.addEventListener('click', async () => {
+        const id = state.masterRescheduleAppointmentId
+        if (id === null) return
+        try {
+          await apiPatch(API.masterRescheduleAppointment(id), {
+            slot_start_utc: slot.start_utc_iso,
+          })
+          state.masterRescheduleAppointmentId = null
+          state.masterRescheduleDate = null
+          state.masterRescheduleSlots = []
+          await loadMasterAppointments(scheduleRender)
+        } finally {
+          scheduleRender()
+        }
+      })
+      slotsRow.appendChild(btn)
+    }
+    rescheduleBlock.appendChild(slotsRow)
+    const cancelBtn = document.createElement('button')
+    cancelBtn.type = 'button'
+    cancelBtn.className = 'shell__pill'
+    cancelBtn.textContent = 'Отмена'
+    cancelBtn.addEventListener('click', () => {
+      state.masterRescheduleAppointmentId = null
+      state.masterRescheduleDate = null
+      state.masterRescheduleSlots = []
+      scheduleRender()
+    })
+    rescheduleBlock.appendChild(cancelBtn)
+    card.appendChild(rescheduleBlock)
+  }
   if (state.masterLoading) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
@@ -419,7 +492,7 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
         (a) => (a.datetime_local.slice(0, 10)) === dateStr
       )
       const daySlots = state.masterSlotsByDate[dateStr] ?? []
-      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes)
+      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes, scheduleRender)
       container.appendChild(dayCard)
     }
     card.appendChild(container)
@@ -439,7 +512,7 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
         (a) => (a.datetime_local.slice(0, 10)) === dateStr
       )
       const daySlots = state.masterSlotsByDate[dateStr] ?? []
-      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes)
+      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes, scheduleRender)
       container.appendChild(dayCard)
     }
     card.appendChild(container)
@@ -448,7 +521,8 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
       card,
       state.masterAppointments,
       state.masterSlots,
-      state.masterSlotDurationMinutes
+      state.masterSlotDurationMinutes,
+      scheduleRender
     )
   }
   main.appendChild(card)
@@ -519,16 +593,6 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
     p.className = 'shell__section-caption'
     p.textContent = 'Загрузка…'
     card.appendChild(p)
-  } else if (!state.masterSettings) {
-    const p = document.createElement('p')
-    p.className = 'shell__section-caption'
-    p.textContent = 'Загрузка…'
-    card.appendChild(p)
-    setTimeout(() => {
-      if (state.masterTab === 'settings' && !state.masterSettings && !state.masterLoading) {
-        loadMasterSettings(scheduleRender)
-      }
-    }, 300)
   } else if (state.masterSettings) {
     const s = state.masterSettings
     const bookingWrap = document.createElement('div')

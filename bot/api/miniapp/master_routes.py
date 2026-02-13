@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from bot.api.deps import (
     conflict,
+    forbidden,
     get_db,
     not_found,
     parse_date,
@@ -18,6 +19,8 @@ from bot.api.deps import (
     require_master,
 )
 from bot.api.schemas import (
+    AppointmentOut,
+    AppointmentRescheduleIn,
     BlockedSlotCreateIn,
     BlockedSlotOut,
     ClientOut,
@@ -30,6 +33,8 @@ from bot.api.schemas import (
     WorkScheduleItemOut,
 )
 from bot.models import Appointment, BlockedSlot, Client, Master, WorkSchedule
+from bot.services import AppointmentService
+from bot.services.exceptions import SlotBusyError
 
 routes = web.RouteTableDef()
 
@@ -91,6 +96,59 @@ async def get_master_appointments(request: web.Request) -> web.Response:
         appointments=items,
     )
     return web.json_response(body.model_dump(mode="json"))
+
+
+@routes.patch("/api/miniapp/master/appointments/{appointment_id}")
+async def patch_master_appointment(request: web.Request) -> web.Response:
+    """Перенос записи мастером на новое время."""
+    appointment_id = parse_int("appointment_id", request.match_info.get("appointment_id"))
+    payload_raw = await request.json()
+    data = AppointmentRescheduleIn.model_validate(payload_raw)
+
+    with get_db() as db:
+        master_id = require_master(db, request)
+        stmt = (
+            select(Appointment)
+            .options(joinedload(Appointment.client), joinedload(Appointment.service))
+            .where(Appointment.id == appointment_id)
+        )
+        appt = db.execute(stmt).scalar_one_or_none()
+        if appt is None:
+            not_found("Запись не найдена.", code="appointment_not_found")
+        if appt.master_id != master_id:
+            forbidden("Не ваша запись.", code="not_your_appointment")
+
+        now_utc = datetime.now(UTC)
+        start_utc = (
+            appt.datetime_start
+            if appt.datetime_start.tzinfo
+            else appt.datetime_start.replace(tzinfo=UTC)
+        )
+        if appt.status != "confirmed" or start_utc <= now_utc:
+            conflict("Эту запись уже нельзя перенести.", code="cannot_reschedule")
+
+        svc = AppointmentService(db)
+        try:
+            appt = svc.reschedule(
+                appointment_id=appointment_id,
+                new_datetime_start_utc=data.slot_start_utc,
+            )
+        except SlotBusyError:
+            conflict(
+                "Выбранный слот занят.",
+                code="slot_busy",
+            )
+
+        label = appt.service.name if appt.service else "Запись"
+        item = AppointmentOut(
+            id=appt.id,
+            label=label,
+            datetime_start_utc=appt.datetime_start,
+            status=appt.status,
+            source=appt.source,
+        )
+
+    return web.json_response(item.model_dump(mode="json"))
 
 
 @routes.get("/api/miniapp/master/clients")
@@ -196,6 +254,7 @@ async def get_master_settings(request: web.Request) -> web.Response:
     body = MasterSettingsOut(
         booking_enabled=master.booking_enabled,
         timezone=master.timezone,
+        slot_duration_minutes=master.slot_duration_minutes,
         work_schedule=[WorkScheduleItemOut.model_validate(ws) for ws in work_schedule],
     )
     return web.json_response(body.model_dump(mode="json"))

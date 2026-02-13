@@ -75,4 +75,7 @@ export const state = {
   submitting: false,
   masterSavingDay: null as number | null,
   masterBlockedSubmitting: false,
+  masterRescheduleAppointmentId: null as number | null,
+  masterRescheduleDate: null as string | null,
+  masterRescheduleSlots: [] as Slot[],
 }
