@@ -77,6 +77,18 @@ def _normalize_webhook_domain(raw: str) -> str:
 
 
 @web.middleware
+async def log_miniapp_requests(
+    request: web.Request,
+    handler: Callable[[web.Request], Awaitable[web.StreamResponse]],
+) -> web.StreamResponse:
+    """Логирование запросов к API мини-аппа для мониторинга на Railway."""
+    path = request.path
+    if path.startswith("/api/miniapp/"):
+        logger.info("miniapp {} {}", request.method, path)
+    return await handler(request)
+
+
+@web.middleware
 async def json_error_middleware(
     request: web.Request,
     handler: Callable[[web.Request], Awaitable[web.StreamResponse]],
@@ -99,7 +111,7 @@ async def create_app() -> web.Application:
     log_dir.mkdir(parents=True, exist_ok=True)
     logger.add(str(log_dir / "app.log"), rotation="10 MB")
 
-    app = web.Application(middlewares=[json_error_middleware])
+    app = web.Application(middlewares=[log_miniapp_requests, json_error_middleware])
 
     # Health endpoint
     async def health(request: web.Request) -> web.Response:  # noqa: ANN001

@@ -7,6 +7,7 @@ from datetime import date
 from typing import NoReturn
 
 from aiohttp import web
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -89,6 +90,7 @@ def get_telegram_id_from_request(request: web.Request) -> int:
             user_id = get_user_id_from_validated(validated)
             if user_id is not None:
                 return user_id
+        logger.info("miniapp auth: initData missing or invalid, fallback to header/query")
     return get_telegram_id(request)
 
 
@@ -164,10 +166,13 @@ def require_master(db: Session, request: web.Request) -> int:
     v1: мы работаем с одним мастером, поэтому возвращаем id единственного мастера.
     Использует get_telegram_id_from_request (initData или в dev header/query).
     """
-
     telegram_id = get_telegram_id_from_request(request)
     role = resolve_telegram_role(telegram_id)
     if role not in {"MASTER", "ADMIN"}:
+        logger.info(
+            "miniapp master_required: telegram_id={} not in MASTER/ADMIN_IDS",
+            telegram_id,
+        )
         forbidden("Доступ разрешён только мастеру.", code="master_required")
 
     return _get_single_master_id(db)

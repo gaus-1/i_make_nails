@@ -146,6 +146,7 @@ async function loadMasterClients(scheduleRender: () => void): Promise<void> {
 async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
     const tab = state.masterTab
+    state.masterError = null
     try {
       const data = await apiGet<MasterSettings>(API.masterSettings)
       if (state.masterTab !== tab) return
@@ -153,6 +154,7 @@ async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
     } catch {
       if (state.masterTab !== tab) return
       state.masterSettings = null
+      state.masterError = 'Не удалось загрузить настройки.'
     }
   })
 }
@@ -590,9 +592,11 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
   if (!state.masterSettings) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
-    p.textContent = 'Загрузка…'
+    p.textContent = state.masterError ? state.masterError : 'Загрузка…'
     card.appendChild(p)
-    if (!state.masterLoading) loadMasterSettings(scheduleRender)
+    if (!state.masterLoading && !state.masterError) {
+      loadMasterSettings(scheduleRender)
+    }
   } else if (state.masterSettings) {
     const s = state.masterSettings
     const bookingWrap = document.createElement('div')
