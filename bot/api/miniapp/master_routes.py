@@ -6,6 +6,7 @@ from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from aiohttp import web
+from loguru import logger
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import joinedload
 
@@ -238,26 +239,31 @@ async def patch_master_client(request: web.Request) -> web.Response:
 @routes.get("/api/miniapp/master/settings")
 async def get_master_settings(request: web.Request) -> web.Response:
     """Return master settings (booking_enabled, timezone, work_schedule). Requires master/admin."""
-    with get_db() as db:
-        master_id = require_master(db, request)
-        master = db.get(Master, master_id)
-        if master is None:
-            not_found("Мастер не найден.", code="master_not_found")
+    try:
+        with get_db() as db:
+            master_id = require_master(db, request)
+            master = db.get(Master, master_id)
+            if master is None:
+                not_found("Мастер не найден.", code="master_not_found")
 
-        ws_stmt = (
-            select(WorkSchedule)
-            .where(WorkSchedule.master_id == master_id)
-            .order_by(WorkSchedule.day_of_week, WorkSchedule.time_start)
-        )
-        work_schedule = db.execute(ws_stmt).scalars().all()
+            ws_stmt = (
+                select(WorkSchedule)
+                .where(WorkSchedule.master_id == master_id)
+                .order_by(WorkSchedule.day_of_week, WorkSchedule.time_start)
+            )
+            work_schedule = db.execute(ws_stmt).scalars().all()
 
-        body = MasterSettingsOut(
-            booking_enabled=master.booking_enabled,
-            timezone=master.timezone,
-            slot_duration_minutes=master.slot_duration_minutes,
-            work_schedule=[WorkScheduleItemOut.model_validate(ws) for ws in work_schedule],
-        )
-    return web.json_response(body.model_dump(mode="json"))
+            body = MasterSettingsOut(
+                booking_enabled=master.booking_enabled,
+                timezone=master.timezone,
+                slot_duration_minutes=master.slot_duration_minutes,
+                work_schedule=[WorkScheduleItemOut.model_validate(ws) for ws in work_schedule],
+            )
+        logger.info("master settings OK, work_schedule count={}", len(body.work_schedule))
+        return web.json_response(body.model_dump(mode="json"))
+    except Exception as exc:
+        logger.exception("get_master_settings failed: {}", exc)
+        raise
 
 
 @routes.patch("/api/miniapp/master/settings")

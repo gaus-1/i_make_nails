@@ -1,0 +1,10 @@
+# Сборка фронта перед деплоем: static/ в .gitignore, при Nixpacks без этого фронт не обновляется.
+[phases.setup]
+nixPkgs = ["...", "nodejs"]
+
+[phases.build]
+cmds = [
+  "...",
+  "cd frontend && npm install && npm run build",
+  "mkdir -p static && cp -r frontend/dist/* static/"
+]
