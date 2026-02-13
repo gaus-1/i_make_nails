@@ -1,6 +1,6 @@
 /** Рендер панели мастера: расписание, клиенты, настройки. */
 
-import { API, apiGet, apiPatch, authHeaders, getTelegramUser, hasAuthForRequest, normalizeApiError } from './api'
+import { API, apiGet, apiPatch, authHeaders, getTelegramUser, normalizeApiError } from './api'
 import type { Slot } from './api'
 import {
   state,
@@ -147,19 +147,11 @@ async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
     const tab = state.masterTab
     state.masterError = null
-    for (let i = 0; i < 10 && !hasAuthForRequest(); i++) {
-      await new Promise((r) => setTimeout(r, 100))
-      if (state.masterTab !== tab) return
+    const getSettingsUrl = (): string => {
+      const uid = getTelegramUser()?.id ?? new URLSearchParams(window.location.search).get('telegram_id')
+      return uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
     }
-    if (!hasAuthForRequest()) {
-      if (state.masterTab !== tab) return
-      state.masterSettings = null
-      state.masterError = 'Откройте приложение из Telegram.'
-      return
-    }
-    const uid = getTelegramUser()?.id ?? new URLSearchParams(window.location.search).get('telegram_id')
-    const settingsUrl = uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
-    const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(settingsUrl)
+    const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(getSettingsUrl())
     try {
       let data: MasterSettings
       try {
