@@ -55,10 +55,10 @@ body {
   display: flex;
   justify-content: center;
   align-items: stretch;
-  padding: 6px 12px 16px;
+  padding: 4px 12px 12px;
   padding-left: max(12px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right));
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
 .shell {
@@ -68,7 +68,7 @@ body {
   background: rgba(255, 255, 255, 0.96);
   border-radius: 28px;
   box-shadow: var(--shadow-soft);
-  padding: 8px 18px 12px;
+  padding: 6px 18px 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -199,6 +199,16 @@ body {
   margin: 0;
 }
 
+.shell__tabs {
+  margin: 0;
+}
+
+.shell__messages:empty {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
 .shell__tabpanel {
   display: contents;
 }
@@ -301,6 +311,7 @@ body {
   grid-template-columns: 1.05fr 1fr;
   gap: 10px;
   margin: 0;
+  padding: 0;
 }
 
 .shell__layout .shell__section-title {

@@ -251,12 +251,12 @@ async def get_master_settings(request: web.Request) -> web.Response:
         )
         work_schedule = db.execute(ws_stmt).scalars().all()
 
-    body = MasterSettingsOut(
-        booking_enabled=master.booking_enabled,
-        timezone=master.timezone,
-        slot_duration_minutes=master.slot_duration_minutes,
-        work_schedule=[WorkScheduleItemOut.model_validate(ws) for ws in work_schedule],
-    )
+        body = MasterSettingsOut(
+            booking_enabled=master.booking_enabled,
+            timezone=master.timezone,
+            slot_duration_minutes=master.slot_duration_minutes,
+            work_schedule=[WorkScheduleItemOut.model_validate(ws) for ws in work_schedule],
+        )
     return web.json_response(body.model_dump(mode="json"))
 
 
