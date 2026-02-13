@@ -49,6 +49,14 @@ export function getTelegramUser(): { id: number; name: string } | null {
   return { id: user.id, name }
 }
 
+/** Есть ли данные для идентификации (initData или telegram_id в query/user). */
+export function hasAuthForRequest(): boolean {
+  if (window.Telegram?.WebApp?.initData) return true
+  if (getTelegramUser()?.id) return true
+  if (new URLSearchParams(window.location.search).get('telegram_id')) return true
+  return false
+}
+
 export function authHeaders(): HeadersInit {
   const h: HeadersInit = { 'Content-Type': 'application/json' }
   const initData = window.Telegram?.WebApp?.initData

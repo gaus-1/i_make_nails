@@ -1,6 +1,6 @@
 /** Рендер панели мастера: расписание, клиенты, настройки. */
 
-import { API, apiGet, apiPatch, authHeaders, normalizeApiError } from './api'
+import { API, apiGet, apiPatch, authHeaders, getTelegramUser, hasAuthForRequest, normalizeApiError } from './api'
 import type { Slot } from './api'
 import {
   state,
@@ -147,8 +147,28 @@ async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
     const tab = state.masterTab
     state.masterError = null
+    for (let i = 0; i < 10 && !hasAuthForRequest(); i++) {
+      await new Promise((r) => setTimeout(r, 100))
+      if (state.masterTab !== tab) return
+    }
+    if (!hasAuthForRequest()) {
+      if (state.masterTab !== tab) return
+      state.masterSettings = null
+      state.masterError = 'Откройте приложение из Telegram.'
+      return
+    }
+    const uid = getTelegramUser()?.id ?? new URLSearchParams(window.location.search).get('telegram_id')
+    const settingsUrl = uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
+    const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(settingsUrl)
     try {
-      const data = await apiGet<MasterSettings>(API.masterSettings)
+      let data: MasterSettings
+      try {
+        data = await tryFetch()
+      } catch {
+        await new Promise((r) => setTimeout(r, 500))
+        if (state.masterTab !== tab) return
+        data = await tryFetch()
+      }
       if (state.masterTab !== tab) return
       state.masterSettings = data
     } catch {
@@ -268,7 +288,9 @@ async function patchMasterSettings(
   scheduleRender: () => void
 ): Promise<void> {
   try {
-    const r = await fetch(API.masterSettings, {
+    const uid = getTelegramUser()?.id ?? new URLSearchParams(window.location.search).get('telegram_id')
+    const settingsUrl = uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
+    const r = await fetch(settingsUrl, {
       method: 'PATCH',
       headers: authHeaders(),
       body: JSON.stringify(payload),

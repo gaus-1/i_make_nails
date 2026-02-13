@@ -195,6 +195,10 @@ body {
   min-width: 0;
 }
 
+.shell__main:not(.shell__main--master) {
+  margin-top: -6px;
+}
+
 .shell__main > * {
   margin: 0;
 }
