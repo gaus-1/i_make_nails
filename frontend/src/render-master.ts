@@ -23,14 +23,13 @@ function openTelegramChat(telegramId: number): void {
     window.location.href = url
   }
 }
-/** Обёртка: выставляет masterLoading и перерисовывает до и после загрузки. */
+/** Обёртка: выставляет masterLoading и перерисовывает после загрузки. Не вызывает scheduleRender до завершения — иначе при открытии Настроек получается двойной shell. */
 async function withMasterLoading(
   scheduleRender: () => void,
   fn: () => Promise<void>
 ): Promise<void> {
   state.masterLoading = true
   state.masterError = null
-  scheduleRender()
   try {
     await fn()
   } finally {
@@ -588,11 +587,12 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
   title.className = 'shell__section-title'
   title.textContent = 'Настройки'
   card.appendChild(title)
-  if (state.masterLoading && !state.masterSettings) {
+  if (!state.masterSettings) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
     p.textContent = 'Загрузка…'
     card.appendChild(p)
+    if (!state.masterLoading) loadMasterSettings(scheduleRender)
   } else if (state.masterSettings) {
     const s = state.masterSettings
     const bookingWrap = document.createElement('div')
@@ -773,7 +773,6 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
       scheduleRender()
       if (t.key === 'schedule') await loadMasterAppointments(scheduleRender)
       else if (t.key === 'clients') await loadMasterClients(scheduleRender)
-      else if (t.key === 'settings') await loadMasterSettings(scheduleRender)
       else if (t.key === 'blocked') await loadMasterBlockedSlots(scheduleRender)
     })
     tabs.appendChild(btn)

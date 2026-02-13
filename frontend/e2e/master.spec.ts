@@ -28,7 +28,7 @@ test.describe('Панель мастера', () => {
 
   test('настройки: вкладка и контент', async ({ page }) => {
     await page.getByRole('tab', { name: 'Настройки' }).click()
-    await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Настройки' }).first()).toBeVisible({ timeout: 5000 })
     await expect(page.getByRole('button', { name: 'Сохранить' }).first()).toBeVisible({ timeout: 10000 })
   })
 
@@ -49,5 +49,30 @@ test.describe('Панель мастера', () => {
     await expect(page.getByRole('heading', { name: 'Закрытия' })).toBeVisible({ timeout: 5000 })
     await expect(page.getByRole('button', { name: 'Закрыть' })).toBeVisible()
     await expect(page.locator('input[type="date"]').first()).toBeVisible()
+  })
+
+  test('кнопка Как клиент: переход по URL, затем либо вид клиента либо редирект в панель мастера', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Как клиент' })).toBeVisible({ timeout: 5000 })
+    await page.getByRole('button', { name: 'Как клиент' }).click()
+    await expect(page).toHaveURL(/\?telegram_id=/, { timeout: 5000 })
+    await expect(
+      page.getByRole('tab', { name: 'Записаться' }).or(page.getByRole('tab', { name: 'Расписание' }))
+    ).toBeVisible({ timeout: 8000 })
+  })
+
+  test('расписание: переключение День / Неделя / Месяц', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'День' })).toBeVisible({ timeout: 5000 })
+    await page.getByRole('button', { name: 'Неделя' }).click()
+    await expect(page.getByRole('button', { name: 'Неделя' })).toHaveClass(/shell__period-tab--active/)
+    await page.getByRole('button', { name: 'Месяц' }).click()
+    await expect(page.getByRole('button', { name: 'Месяц' })).toHaveClass(/shell__period-tab--active/)
+  })
+
+  test('настройки: форма загружается, кнопки Сохранить по дням', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Настройки' }).click()
+    await expect(page.getByRole('heading', { name: 'Настройки' }).first()).toBeVisible({ timeout: 10000 })
+    const saveButtons = page.getByRole('button', { name: 'Сохранить' })
+    await expect(saveButtons.first()).toBeVisible({ timeout: 10000 })
+    await expect(saveButtons).toHaveCount(7)
   })
 })

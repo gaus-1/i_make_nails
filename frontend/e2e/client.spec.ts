@@ -62,4 +62,32 @@ test.describe('Клиент', () => {
     await expect(page.locator('.shell__cal-grid')).toBeVisible({ timeout: 3000 })
     await expect(page.locator('input[type="tel"]')).not.toBeVisible()
   })
+
+  test('календарь: кнопки предыдущий/следующий месяц', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Записаться' }).click()
+    await expect(page.getByRole('button', { name: 'Предыдущий месяц' })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('button', { name: 'Следующий месяц' })).toBeVisible()
+    await page.getByRole('button', { name: 'Предыдущий месяц' }).click()
+    await expect(page.locator('.shell__cal-grid')).toBeVisible()
+  })
+
+  test('кнопка Обновить обновляет список записей', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Мои записи' }).click()
+    await expect(page.getByRole('button', { name: 'Обновить' })).toBeVisible({ timeout: 5000 })
+    await page.getByRole('button', { name: 'Обновить' }).click()
+    await expect(page.getByRole('heading', { name: 'Мои записи' })).toBeVisible()
+  })
+
+  test('подтвердить запись: кнопка активна после выбора даты и слота', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Записаться' }).click()
+    const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other)').first()
+    await calCell.waitFor({ state: 'visible', timeout: 5000 })
+    await calCell.click()
+    const slot = page.locator('.slot').first()
+    await slot.waitFor({ state: 'visible', timeout: 5000 })
+    await slot.click()
+    const confirmBtn = page.getByRole('button', { name: 'Подтвердить запись' })
+    await expect(confirmBtn).toBeVisible()
+    await expect(confirmBtn).toBeEnabled()
+  })
 })
