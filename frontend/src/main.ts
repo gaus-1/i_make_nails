@@ -2,7 +2,7 @@
 
 import './style.css'
 
-import { API, apiGet, getTelegramUser } from './api'
+import { API, apiGet, getTelegramUser, setTelegramIdFallback } from './api'
 import { state, OWNER_TELEGRAM_ID } from './state'
 import { renderClient } from './render-client'
 import { initMaster, renderMaster } from './render-master'
@@ -33,6 +33,7 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
     const data = await apiGet<{ telegram_id: number; role: string }>(API.me)
     state.userRole = data.role
     state.telegramId = data.telegram_id
+    setTelegramIdFallback(data.telegram_id)
     const params = new URLSearchParams(window.location.search)
     if ((data.role === 'master' || data.role === 'admin') && params.get('view') !== 'master') {
       switchToMasterView()
@@ -41,6 +42,7 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
   } catch {
     state.userRole = null
     state.telegramId = null
+    setTelegramIdFallback(null)
   }
   scheduleRender()
 }

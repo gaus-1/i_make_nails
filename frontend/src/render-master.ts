@@ -1,6 +1,6 @@
 /** Рендер панели мастера: расписание, клиенты, настройки. */
 
-import { API, apiGet, apiPatch, authHeaders, getTelegramUser, normalizeApiError } from './api'
+import { API, apiGet, apiPatch, authHeaders, getTelegramUser, normalizeApiError, setTelegramIdFallback } from './api'
 import type { Slot } from './api'
 import {
   state,
@@ -148,7 +148,10 @@ async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
     const tab = state.masterTab
     state.masterError = null
     const getSettingsUrl = (): string => {
-      const uid = getTelegramUser()?.id ?? new URLSearchParams(window.location.search).get('telegram_id')
+      const uid =
+        getTelegramUser()?.id ??
+        new URLSearchParams(window.location.search).get('telegram_id') ??
+        (state.telegramId != null ? String(state.telegramId) : null)
       return uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
     }
     const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(getSettingsUrl())
@@ -280,7 +283,10 @@ async function patchMasterSettings(
   scheduleRender: () => void
 ): Promise<void> {
   try {
-    const uid = getTelegramUser()?.id ?? new URLSearchParams(window.location.search).get('telegram_id')
+    const uid =
+      getTelegramUser()?.id ??
+      new URLSearchParams(window.location.search).get('telegram_id') ??
+      (state.telegramId != null ? String(state.telegramId) : null)
     const settingsUrl = uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
     const r = await fetch(settingsUrl, {
       method: 'PATCH',
@@ -822,9 +828,11 @@ export async function initMaster(scheduleRender: () => void): Promise<void> {
     const me = await apiGet<{ telegram_id: number; role: string }>(API.me)
     state.telegramId = me.telegram_id
     state.userRole = me.role
+    setTelegramIdFallback(me.telegram_id)
   } catch {
     state.telegramId = null
     state.userRole = null
+    setTelegramIdFallback(null)
   }
   scheduleRender()
   if (state.masterTab === 'schedule') await loadMasterAppointments(scheduleRender)

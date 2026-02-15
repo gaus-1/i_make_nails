@@ -58,13 +58,20 @@ export function hasAuthForRequest(): boolean {
   return false
 }
 
+let telegramIdFallback: number | null = null
+/** Подставить telegram_id в заголовки после успешного /me (fallback при сбое initData). */
+export function setTelegramIdFallback(id: number | null): void {
+  telegramIdFallback = id
+}
+
 export function authHeaders(): HeadersInit {
   const h: HeadersInit = { 'Content-Type': 'application/json' }
   const initData = (window.Telegram?.WebApp?.initData ?? '').trim()
   if (initData) (h as Record<string, string>)['X-Telegram-Init-Data'] = initData
   const user = getTelegramUser()
   const queryId = new URLSearchParams(window.location.search).get('telegram_id')
-  const telegramId = user ? String(user.id) : queryId
+  const telegramId =
+    (user ? String(user.id) : null) ?? queryId ?? (telegramIdFallback != null ? String(telegramIdFallback) : null)
   if (telegramId) (h as Record<string, string>)['X-Telegram-Id'] = telegramId
   return h
 }
