@@ -662,11 +662,11 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
       const startInput = document.createElement('input')
       startInput.type = 'time'
       startInput.className = 'shell__input'
-      startInput.value = item ? formatTimeInput(item.time_start) : '09:00'
+      startInput.value = item ? formatTimeInput(item.time_start) : '08:00'
       const endInput = document.createElement('input')
       endInput.type = 'time'
       endInput.className = 'shell__input'
-      endInput.value = item ? formatTimeInput(item.time_end) : '18:00'
+      endInput.value = item ? formatTimeInput(item.time_end) : '22:30'
       row.appendChild(document.createTextNode(DAY_NAMES[d] + ' '))
       row.appendChild(startInput)
       row.appendChild(document.createTextNode(' – '))

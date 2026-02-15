@@ -57,7 +57,7 @@ def _ensure_single_master() -> None:
                     master_id=master.id,
                     day_of_week=day,
                     time_start=time(8, 0),
-                    time_end=time(22, 0),
+                    time_end=time(22, 30),
                 )
             )
         db.commit()
@@ -227,7 +227,7 @@ def _seed_e2e_db() -> None:
                     master_id=master.id,
                     day_of_week=day,
                     time_start=time(8, 0),
-                    time_end=time(22, 0),
+                    time_end=time(22, 30),
                 )
             )
         db.commit()
