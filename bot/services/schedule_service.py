@@ -12,14 +12,14 @@ from bot.models import Appointment, BlockedSlot, Master, WorkSchedule
 
 @dataclass
 class DailySlots:
-    """Container for the list of free slots for a given day."""
+    """Свободные слоты на одну дату (дата + список начал в UTC)."""
 
     date: date
     slots_utc: list[datetime]
 
 
 class ScheduleService:
-    """Service that knows how to build free slots for a day."""
+    """Формирование свободных слотов на день по расписанию и блокировкам."""
 
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -37,7 +37,7 @@ class ScheduleService:
         master_id: int,
         target_date: date,
     ) -> list[tuple[datetime, datetime]]:
-        """Return working intervals in master's local time for the given date."""
+        """Интервалы работы мастера в его таймзоне на указанную дату."""
         master = self.db.get(Master, master_id)
         if master is None:
             msg = f"Master {master_id} not found"
@@ -99,7 +99,7 @@ class ScheduleService:
         target_date: date,
         duration_minutes: int,
     ) -> DailySlots:
-        """Return list of free slot start times in UTC for a given date."""
+        """Свободные слоты на дату в UTC с учётом расписания и занятости."""
         master = self.db.get(Master, master_id)
         if master is None:
             msg = f"Master {master_id} not found"

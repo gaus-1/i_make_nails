@@ -42,7 +42,7 @@ routes = web.RouteTableDef()
 
 @routes.get("/api/miniapp/master/appointments")
 async def get_master_appointments(request: web.Request) -> web.Response:
-    """Return master's schedule for a day or date range (requires master/admin role)."""
+    """Расписание мастера на день или диапазон дат (только мастер/админ)."""
     target_date = parse_date("date", request.query.get("date"))
     date_to_str = request.query.get("date_to")
     end_date = parse_date("date_to", date_to_str) if date_to_str else target_date
@@ -101,7 +101,7 @@ async def get_master_appointments(request: web.Request) -> web.Response:
 
 @routes.patch("/api/miniapp/master/appointments/{appointment_id}")
 async def patch_master_appointment(request: web.Request) -> web.Response:
-    """Перенос записи мастером на новое время."""
+    """Перенос записи на новое время (только мастер/админ)."""
     appointment_id = parse_int("appointment_id", request.match_info.get("appointment_id"))
     payload_raw = await request.json()
     data = AppointmentRescheduleIn.model_validate(payload_raw)
@@ -154,7 +154,7 @@ async def patch_master_appointment(request: web.Request) -> web.Response:
 
 @routes.get("/api/miniapp/master/clients")
 async def get_master_clients(request: web.Request) -> web.Response:
-    """Return list of clients for master (requires master/admin role)."""
+    """Список клиентов мастера (только мастер/админ)."""
     with get_db() as db:
         master_id = require_master(db, request)
 
@@ -198,7 +198,7 @@ async def get_master_clients(request: web.Request) -> web.Response:
 
 @routes.patch("/api/miniapp/master/clients/{client_id}")
 async def patch_master_client(request: web.Request) -> web.Response:
-    """Update client (e.g. blacklist booking_allowed). Requires master/admin."""
+    """Обновление клиента (например запрет записи). Только мастер/админ."""
     client_id = parse_int("client_id", request.match_info.get("client_id"))
     payload_raw = await request.json() or {}
     data = ClientPatchIn.model_validate(payload_raw)
@@ -238,7 +238,7 @@ async def patch_master_client(request: web.Request) -> web.Response:
 
 @routes.get("/api/miniapp/master/settings")
 async def get_master_settings(request: web.Request) -> web.Response:
-    """Return master settings (booking_enabled, timezone, work_schedule). Requires master/admin."""
+    """Настройки мастера: запись вкл/выкл, таймзона, расписание. Только мастер/админ."""
     try:
         with get_db() as db:
             master_id = require_master(db, request)
@@ -268,7 +268,7 @@ async def get_master_settings(request: web.Request) -> web.Response:
 
 @routes.patch("/api/miniapp/master/settings")
 async def patch_master_settings(request: web.Request) -> web.Response:
-    """Update master settings. Requires master/admin."""
+    """Обновление настроек мастера. Только мастер/админ."""
     payload_raw = await request.json() or {}
     data = MasterSettingsPatchIn.model_validate(payload_raw)
 

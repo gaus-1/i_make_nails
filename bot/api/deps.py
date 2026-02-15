@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Common dependencies and helpers for HTTP API handlers."""
+"""Зависимости и хелперы для HTTP API: сессия БД, telegram_id, роли, HTTP-ошибки."""
 
 import json
 from datetime import date
@@ -18,19 +18,12 @@ from bot.models import Master
 
 
 def get_db() -> Session:
-    """Return a new database session.
-
-    NOTE: Handlers are responsible for closing it via a context manager:
-
-        with get_db() as db:
-            ...
-    """
-
+    """Новая сессия БД. Использовать как with get_db() as db: ..."""
     return SessionLocal()
 
 
 def parse_date(param_name: str, raw_value: str | None) -> date:
-    """Parse a YYYY-MM-DD date from query parameters with a clear error."""
+    """Парсит дату YYYY-MM-DD из query; при ошибке — понятный bad_request."""
     if not raw_value:
         msg = f"Missing required query parameter '{param_name}'."
         bad_request(msg, code="missing_parameter")
@@ -43,7 +36,7 @@ def parse_date(param_name: str, raw_value: str | None) -> date:
 
 
 def parse_int(param_name: str, raw_value: str | None) -> int:
-    """Parse an integer from query parameters with a clear error."""
+    """Парсит целое из query; при ошибке — bad_request."""
     if not raw_value:
         msg = f"Missing required query parameter '{param_name}'."
         bad_request(msg, code="missing_parameter")
@@ -56,12 +49,7 @@ def parse_int(param_name: str, raw_value: str | None) -> int:
 
 
 def get_telegram_id(request: web.Request) -> int:
-    """Extract Telegram user id from headers or query for v1 mini-app endpoints.
-
-    For local debugging we support both:
-    - X-Telegram-Id header
-    - telegram_id query parameter
-    """
+    """Telegram user id из заголовка X-Telegram-Id или query telegram_id (для dev)."""
     header_value = request.headers.get("X-Telegram-Id")
     query_value = request.query.get("telegram_id")
 
@@ -95,7 +83,7 @@ def get_telegram_id_from_request(request: web.Request) -> int:
 
 
 def _get_single_master_id(db: Session) -> int:
-    """Return id of the single master in v1 or raise if not found."""
+    """Id единственного мастера в v1; иначе bad_request."""
     master = db.execute(select(Master)).scalars().first()
     if master is None:
         msg = "Master record not found. Run onboarding first."
@@ -104,32 +92,32 @@ def _get_single_master_id(db: Session) -> int:
 
 
 def bad_request(message: str, code: str = "bad_request", exc: Exception | None = None) -> NoReturn:
-    """Raise HTTP 400 with a unified JSON error body."""
+    """HTTP 400 с JSON { error, code }."""
     raise _json_http_error(web.HTTPBadRequest, message=message, code=code) from exc
 
 
 def not_found(message: str, code: str = "not_found") -> NoReturn:
-    """Raise HTTP 404 with a unified JSON error body."""
+    """HTTP 404 с JSON { error, code }."""
     raise _json_http_error(web.HTTPNotFound, message=message, code=code)
 
 
 def conflict(message: str, code: str = "conflict") -> NoReturn:
-    """Raise HTTP 409 with a unified JSON error body."""
+    """HTTP 409 с JSON { error, code }."""
     raise _json_http_error(web.HTTPConflict, message=message, code=code)
 
 
 def forbidden(message: str, code: str = "forbidden") -> NoReturn:
-    """Raise HTTP 403 with a unified JSON error body."""
+    """HTTP 403 с JSON { error, code }."""
     raise _json_http_error(web.HTTPForbidden, message=message, code=code)
 
 
 def unauthorized(message: str, code: str = "invalid_init_data") -> NoReturn:
-    """Raise HTTP 401 with a unified JSON error body."""
+    """HTTP 401 с JSON { error, code }."""
     raise _json_http_error(web.HTTPUnauthorized, message=message, code=code)
 
 
 def _parse_id_list(raw: str) -> set[int]:
-    """Parse comma/space-separated list of integer ids. Убирает кавычки из значений (Railway ENV)."""
+    """Парсит список целых id (запятая/пробел), убирает кавычки из значений (Railway ENV)."""
     result: set[int] = set()
     for part in raw.replace(" ", "").split(","):
         part = part.strip().strip("\"'")
@@ -143,7 +131,7 @@ def _parse_id_list(raw: str) -> set[int]:
 
 
 def resolve_telegram_role(telegram_id: int) -> str | None:
-    """Return role name for telegram id: 'MASTER', 'ADMIN' or None."""
+    """Роль по telegram_id: 'MASTER', 'ADMIN' или None."""
     master_ids = _parse_id_list(settings.master_telegram_ids)
     admin_ids = _parse_id_list(settings.admin_telegram_ids)
 
@@ -155,17 +143,13 @@ def resolve_telegram_role(telegram_id: int) -> str | None:
 
 
 def is_master_telegram_id(telegram_id: int) -> bool:
-    """True if telegram_id is in MASTER_TELEGRAM_IDS. Used in bot to show «Панель мастера» only to the master (admin-only users do not see it)."""
+    """Входит ли id в MASTER_TELEGRAM_IDS (кнопка «Панель мастера» только у мастера)."""
     master_ids = _parse_id_list(settings.master_telegram_ids)
     return telegram_id in master_ids
 
 
 def require_master(db: Session, request: web.Request) -> int:
-    """Ensure that current telegram user is a master/admin and return master id.
-
-    v1: мы работаем с одним мастером, поэтому возвращаем id единственного мастера.
-    Использует get_telegram_id_from_request (initData или в dev header/query).
-    """
+    """Проверяет, что пользователь — мастер или админ, возвращает id единственного мастера."""
     telegram_id = get_telegram_id_from_request(request)
     role = resolve_telegram_role(telegram_id)
     if role not in {"MASTER", "ADMIN"}:
@@ -184,7 +168,7 @@ def _json_http_error(
     message: str,
     code: str,
 ) -> web.HTTPException:
-    """Construct an aiohttp HTTPException with JSON body."""
+    """Собирает HTTPException с телом JSON { error, code }."""
     payload = {"error": message, "code": code}
     body = json.dumps(payload, ensure_ascii=False)
     return exc_cls(text=body, content_type="application/json")

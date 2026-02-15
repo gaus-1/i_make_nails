@@ -1,7 +1,26 @@
 from __future__ import annotations
 
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+
+# Корень репозитория в sys.path, чтобы находился пакет bot
+_root = Path(__file__).resolve().parent.parent
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
+
+# DATABASE_URL из .env, если не задан в окружении
+if not os.environ.get("DATABASE_URL"):
+    _env_file = _root / ".env"
+    if _env_file.is_file():
+        for line in _env_file.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                if key.strip() == "DATABASE_URL":
+                    os.environ["DATABASE_URL"] = value.strip().strip("'\"")
+                    break
 
 from sqlalchemy import engine_from_config, pool
 

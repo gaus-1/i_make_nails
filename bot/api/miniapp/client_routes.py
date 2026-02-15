@@ -37,7 +37,7 @@ routes = web.RouteTableDef()
 
 @routes.get("/api/miniapp/me")
 async def get_me(request: web.Request) -> web.Response:
-    """Return current user telegram_id and role (admin/master/client) for UI switcher."""
+    """Текущий пользователь: telegram_id и роль для переключателя в UI."""
     telegram_id = get_telegram_id_from_request(request)
     role_raw = resolve_telegram_role(telegram_id)
     role = (role_raw or "client").lower()
@@ -47,7 +47,7 @@ async def get_me(request: web.Request) -> web.Response:
 
 @routes.get("/api/miniapp/slots")
 async def get_free_slots(request: web.Request) -> web.Response:  # noqa: D401
-    """Return free slots for a given date (one master, duration from master settings)."""
+    """Свободные слоты на дату (один мастер, длительность из настроек)."""
     target_date = parse_date("date", request.query.get("date"))
 
     with get_db() as db:

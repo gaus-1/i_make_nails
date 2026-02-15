@@ -17,6 +17,15 @@ if (typeof window !== 'undefined') {
 function initAppView(): void {
   const params = new URLSearchParams(window.location.search)
   state.appView = params.get('view') === 'master' ? 'master' : 'client'
+  if (state.appView === 'master') {
+    const user = getTelegramUser()
+    if (user && !params.get('telegram_id')) {
+      params.set('telegram_id', String(user.id))
+      const newSearch = params.toString()
+      const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '')
+      window.history.replaceState(null, '', newUrl)
+    }
+  }
 }
 
 export async function loadMe(scheduleRender: () => void): Promise<void> {
@@ -67,7 +76,7 @@ function render(): void {
       masterLink.addEventListener('click', switchToMasterView)
       header.appendChild(masterLink)
     }
-  } else if (state.telegramId === OWNER_TELEGRAM_ID) {
+  } else if (state.telegramId !== null && state.telegramId === OWNER_TELEGRAM_ID) {
     const clientLink = document.createElement('button')
     clientLink.className = 'shell__pill'
     clientLink.type = 'button'

@@ -172,7 +172,9 @@ function renderMyAppointments(main: HTMLElement, scheduleRender: () => void): vo
           const meta = document.createElement('div')
           meta.className = 'shell__appointment-meta'
           const dt = new Date(a.datetime_start_utc)
-          meta.textContent = `${dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} · ${statusLabel(a.status)}`
+          const dateStr = dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+          const timeStr = dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+          meta.textContent = `${dateStr}, ${timeStr} · ${statusLabel(a.status)}`
           item.appendChild(name)
           item.appendChild(meta)
           if (a.status === 'confirmed' && new Date(a.datetime_start_utc) > new Date()) {

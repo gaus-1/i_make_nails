@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Pydantic schemas for HTTP API responses and requests."""
+"""Pydantic-схемы запросов и ответов HTTP API мини-аппа."""
 
 from datetime import date, datetime, time
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class MeOut(BaseModel):
-    """Current user identity and role for mini-app."""
+    """Текущий пользователь и роль для мини-аппа."""
 
     telegram_id: int
     role: str = Field(..., description="'admin' | 'master' | 'client'")

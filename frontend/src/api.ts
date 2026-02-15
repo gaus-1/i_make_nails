@@ -60,14 +60,12 @@ export function hasAuthForRequest(): boolean {
 
 export function authHeaders(): HeadersInit {
   const h: HeadersInit = { 'Content-Type': 'application/json' }
-  const initData = window.Telegram?.WebApp?.initData
+  const initData = (window.Telegram?.WebApp?.initData ?? '').trim()
   if (initData) (h as Record<string, string>)['X-Telegram-Init-Data'] = initData
   const user = getTelegramUser()
-  if (user) (h as Record<string, string>)['X-Telegram-Id'] = String(user.id)
-  else {
-    const q = new URLSearchParams(window.location.search).get('telegram_id')
-    if (q) (h as Record<string, string>)['X-Telegram-Id'] = q
-  }
+  const queryId = new URLSearchParams(window.location.search).get('telegram_id')
+  const telegramId = user ? String(user.id) : queryId
+  if (telegramId) (h as Record<string, string>)['X-Telegram-Id'] = telegramId
   return h
 }
 

@@ -113,7 +113,6 @@ async def create_app() -> web.Application:
 
     app = web.Application(middlewares=[log_miniapp_requests, json_error_middleware])
 
-    # Health endpoint
     async def health(request: web.Request) -> web.Response:  # noqa: ANN001
         return web.Response(text="ok")
 

@@ -1,6 +1,6 @@
 class SlotBusyError(Exception):
-    """Raised when trying to create or move an appointment into an occupied time slot."""
+    """Слот уже занят другой записью."""
 
 
 class AppointmentNotFoundError(Exception):
-    """Raised when an appointment with the given id does not exist."""
+    """Запись с указанным id не найдена."""

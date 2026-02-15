@@ -10,7 +10,7 @@ from bot.services.exceptions import AppointmentNotFoundError, SlotBusyError
 
 
 class AppointmentService:
-    """Service responsible for creating and updating appointments."""
+    """Создание и перенос записей с проверкой занятости слота."""
 
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -22,7 +22,7 @@ class AppointmentService:
         end_utc: datetime,
         ignore_appointment_id: int | None = None,
     ) -> None:
-        """Ensure there is no overlapping confirmed appointment for the master."""
+        """Проверяет, что в интервале нет пересекающихся подтверждённых записей."""
         if start_utc.tzinfo is None or end_utc.tzinfo is None:
             msg = "start_utc and end_utc must be timezone-aware in UTC"
             raise ValueError(msg)
@@ -37,7 +37,7 @@ class AppointmentService:
         if ignore_appointment_id is not None:
             stmt = stmt.where(Appointment.id != ignore_appointment_id)
 
-        # FOR UPDATE is ignored by SQLite but works on PostgreSQL, which we use in prod.
+        # FOR UPDATE в SQLite не действует, в продакшене PostgreSQL — блокировка строки
         appointments = self.db.execute(stmt.with_for_update()).scalars().all()
         if appointments:
             raise SlotBusyError("Requested time slot is already occupied.")
@@ -50,7 +50,7 @@ class AppointmentService:
         datetime_start_utc: datetime,
         service_id: int | None = None,
     ) -> Appointment:
-        """Create a new appointment after checking that the time slot is free."""
+        """Создаёт запись, предварительно проверив, что слот свободен."""
         master = self.db.get(Master, master_id)
         client = self.db.get(Client, client_id)
 
@@ -88,7 +88,7 @@ class AppointmentService:
         appointment_id: int,
         new_datetime_start_utc: datetime,
     ) -> Appointment:
-        """Move an existing appointment to a new free time slot."""
+        """Переносит запись на новый слот, проверяя его свободу."""
         appointment = self.db.get(Appointment, appointment_id)
         if appointment is None:
             raise AppointmentNotFoundError(f"Appointment {appointment_id} not found.")

@@ -20,39 +20,36 @@ Telegram-бот и мини-приложение для записи клиен�
 
 **Фронт мини-аппа:** TypeScript, Vite, раздача статики из `static/` через aiohttp.
 
-**Тесты:** pytest (unit, integration, load), Vitest (frontend), Playwright (E2E). Качество: Ruff, Vulture (в CI), pre-commit (Ruff, TypeScript, проверка секретов и размера файлов).
+**Тесты:** pytest (unit, integration, load), Vitest, Playwright (E2E). Линт: Ruff, Vulture в CI; pre-commit — Ruff, ruff-format, TypeScript при изменениях во frontend, YAML, концы файлов, детекция ключей и больших файлов.
 
 ---
 
 ## Структура репозитория
 
 ```
-├── .github/workflows/      # CI: Ruff, pytest, Vitest, сборка и attestation
-├── bot/                    # Бот и API мини-аппа
-│   ├── api/                # HTTP API: deps, schemas, telegram_auth, miniapp/routes
-│   ├── config/             # Настройки из env
-│   ├── database/           # Движок и сессии БД
-│   ├── handlers/           # Обработчики Telegram (start и т.д.)
-│   ├── models/             # SQLAlchemy-модели
-│   └── services/           # Бизнес-логика: слоты, записи
-├── frontend/               # Мини-апп
-│   ├── e2e/                # Playwright: client.spec, master.spec
-│   ├── scripts/            # start-e2e-server.mjs
-│   └── src/                # Рендер, API, стили, тесты Vitest
-├── scripts/                # check-frontend-tsc.mjs для pre-commit
-├── alembic/                # Миграции БД
-├── tests/                  # pytest
-│   ├── unit/               # appointment_service, schedule_service
-│   ├── integration/        # test_miniapp_api
-│   └── load/               # Нагрузочные тесты
-├── web_server.py           # Точка входа: aiohttp, роуты, статика
-├── Dockerfile              # Сборка: frontend → Python + static
-├── Procfile, railway.json  # Деплой на Railway
-├── package.json            # npm test, test:frontend, test:backend, test:all
+├── .github/workflows/      CI (Ruff, Vulture, pytest, Vitest, сборка, attestation)
+├── bot/                    Бот и API мини-аппа
+│   ├── api/                HTTP API: deps, schemas, telegram_auth, miniapp/routes
+│   ├── config/             Настройки из env
+│   ├── database/           Движок и сессии БД
+│   ├── handlers/           Обработчики Telegram
+│   ├── models/             SQLAlchemy-модели
+│   └── services/           Слоты, записи
+├── frontend/
+│   ├── e2e/                Playwright: client.spec, master.spec
+│   ├── scripts/            start-e2e-server.mjs
+│   └── src/                Рендер, API, стили, Vitest
+├── scripts/                check-frontend-tsc.mjs (pre-commit)
+├── alembic/                Миграции БД
+├── tests/                  pytest: unit, integration, load
+├── web_server.py           Точка входа: aiohttp, роуты, статика
+├── Dockerfile              Сборка фронта, образ Python, static из dist
+├── Procfile, railway.json  Деплой Railway
+├── package.json            test, test:frontend, test:backend, test:all
 └── .pre-commit-config.yaml
 ```
 
-Каталог `static/` — артефакт сборки, создаётся при `npm run build` и копируется из `frontend/dist` (Dockerfile или E2E-скрипт).
+Каталог `static/` не коммитится: заполняется при сборке (копирование из `frontend/dist` в Dockerfile или при запуске E2E).
 
 ---
 
@@ -88,7 +85,7 @@ npm install
 npm run build
 ```
 
-Скопировать `frontend/dist` в `static/` или запустить через Docker.
+Содержимое `frontend/dist` скопировать в `static/` в корне (или собрать образ через Docker — тогда копирование в образе).
 
 ---
 
@@ -105,7 +102,7 @@ npm run test:backend
 **Фронт (Vitest):**
 
 ```bash
-cd frontend && npm run test -- --run
+cd frontend && npm run test
 # или из корня:
 npm test
 ```
@@ -116,27 +113,27 @@ npm test
 npm run test:all
 ```
 
-**E2E (Playwright):** порт 8765 должен быть свободен.
+**E2E (Playwright):** нужен свободный порт 8765.
 
 ```bash
 cd frontend
 npm run e2e
 ```
 
-Playwright собирает фронт, копирует в `static/`, поднимает сервер с `E2E_SERVER=1` и SQLite (сид: один мастер, расписание на 7 дней). На Windows при ошибке spawn можно запустить сервер вручную: `node frontend/scripts/start-e2e-server.mjs`, затем `E2E_BASE_URL=http://localhost:8765 npm run e2e`.
+Скрипт собирает фронт, копирует в `static/`, поднимает сервер с `E2E_SERVER=1` и SQLite с сидом (один мастер, расписание на 7 дней). Если на Windows команда запуска сервера падает: вручную `node frontend/scripts/start-e2e-server.mjs`, затем `E2E_BASE_URL=http://localhost:8765 npm run e2e`.
 
 ---
 
 ## Pre-commit
 
-При коммите: Ruff (линт и формат), проверка TypeScript (`tsc --noEmit` при изменениях в `frontend/`), YAML, концы файлов, детекция ключей.
+Перед коммитом: Ruff (линт с --fix и формат), TypeScript при изменении файлов в `frontend/`, проверка YAML, концов файлов, детекция ключей и размера файлов.
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
 
-Разовый прогон: `pre-commit run --all-files`. Vulture — только в CI.
+Полный прогон: `pre-commit run --all-files`. Vulture выполняется только в CI.
 
 ---
 
@@ -149,4 +146,4 @@ railway link
 railway up --detach
 ```
 
-Root Directory — корень репозитория. Сборка по `Dockerfile`: фронт, образ Python с `static/` из `dist`. Старт: `alembic upgrade head && python web_server.py`.
+В Railway указать корень репозитория. Сборка по Dockerfile: стадия фронта (build), затем образ Python с `static/` из `frontend/dist`. Старт: `alembic upgrade head && python web_server.py`.
