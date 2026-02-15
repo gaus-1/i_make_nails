@@ -23,11 +23,14 @@ import { addDays, formatSlotTime, toYYYYMMDD } from './utils'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-/** Открыть чат с пользователем в Telegram (из мини-аппа). */
+/** Открыть чат с пользователем в Telegram (из мини-аппа). tg:// нужно открывать через openTelegramLink, иначе не срабатывает. */
 function openTelegramChat(telegramId: number): void {
   const url = `tg://user?id=${telegramId}`
-  if (typeof window.Telegram !== 'undefined' && window.Telegram?.WebApp?.openLink) {
-    window.Telegram.WebApp.openLink(url)
+  const webApp = window.Telegram?.WebApp
+  if (webApp?.openTelegramLink) {
+    webApp.openTelegramLink(url)
+  } else if (webApp?.openLink) {
+    webApp.openLink(url)
   } else {
     window.location.href = url
   }

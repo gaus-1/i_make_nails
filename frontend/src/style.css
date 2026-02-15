@@ -674,7 +674,11 @@ body {
   padding: 5px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: var(--bg-card-soft);
+  background: var(--bg-page);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
 }
 
 .shell__period-tabs--master .shell__period-tab {
@@ -693,6 +697,10 @@ body {
 
 .shell__main--master .shell__card > .shell__section-title {
   margin-bottom: 5px;
+}
+
+.shell__main--master .shell__tabpanel .shell__card {
+  margin-top: 12px;
 }
 
 .shell__main--master .shell__period-tab {

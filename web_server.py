@@ -51,13 +51,13 @@ def _ensure_single_master() -> None:
         )
         db.add(master)
         db.flush()
-        for day in range(7):
+        for day in range(6):
             db.add(
                 WorkSchedule(
                     master_id=master.id,
                     day_of_week=day,
-                    time_start=time(9, 0),
-                    time_end=time(18, 0),
+                    time_start=time(8, 0),
+                    time_end=time(22, 0),
                 )
             )
         db.commit()
@@ -221,13 +221,13 @@ def _seed_e2e_db() -> None:
         )
         db.add(master)
         db.flush()
-        for day in range(7):
+        for day in range(6):
             db.add(
                 WorkSchedule(
                     master_id=master.id,
                     day_of_week=day,
-                    time_start=time(9, 0),
-                    time_end=time(18, 0),
+                    time_start=time(8, 0),
+                    time_end=time(22, 0),
                 )
             )
         db.commit()
