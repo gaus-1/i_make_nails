@@ -161,6 +161,15 @@ async def create_appointment(request: web.Request) -> web.Response:
                 "Для вас онлайн-запись недоступна. Свяжитесь с мастером.", code="client_blocked"
             )
 
+        start_utc = data.slot_start_utc
+        if start_utc.tzinfo is None:
+            start_utc = start_utc.replace(tzinfo=UTC)
+        if start_utc < datetime.now(UTC):
+            conflict(
+                "Нельзя записаться на прошедшую дату или время.",
+                code="slot_in_past",
+            )
+
         svc = AppointmentService(db)
         try:
             appointment = svc.create(

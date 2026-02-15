@@ -23,26 +23,26 @@ import { addDays, formatSlotTime, toYYYYMMDD } from './utils'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-/** Открыть чат с пользователем в Telegram. В WebView — openTelegramLink; иначе ссылка tg://. */
+/** Открыть чат с пользователем в Telegram. tg://user?id= в части клиентов не поддерживается в openTelegramLink — используем window.open как обход. */
 function openTelegramChat(telegramId: number, e?: MouseEvent): void {
   e?.preventDefault()
   const url = `tg://user?id=${telegramId}`
   const webApp = window.Telegram?.WebApp
   if (webApp?.openTelegramLink) {
-    webApp.openTelegramLink(url)
-    return
+    try {
+      webApp.openTelegramLink(url)
+      return
+    } catch {
+      /* в части клиентов tg:// выдаёт "Url protocol is not supported" */
+    }
   }
+  const w = window.open(url, '_blank')
+  if (w) return
   if (webApp?.openLink) {
     webApp.openLink(url)
     return
   }
-  const a = document.createElement('a')
-  a.href = url
-  a.rel = 'noreferrer noopener'
-  a.target = '_blank'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  window.location.href = url
 }
 /** Обёртка: выставляет masterLoading и перерисовывает после загрузки. Не вызывает scheduleRender до завершения — иначе при открытии Настроек получается двойной shell. */
 async function withMasterLoading(
@@ -369,12 +369,12 @@ function renderAppointmentList(
       item.appendChild(name)
       item.appendChild(meta)
       if (a.client_telegram_id != null) {
-        const writeLink = document.createElement('a')
-        writeLink.href = `tg://user?id=${a.client_telegram_id}`
-        writeLink.className = 'shell__pill shell__pill--small'
-        writeLink.textContent = 'Написать'
-        writeLink.addEventListener('click', (e) => openTelegramChat(a.client_telegram_id!, e))
-        item.appendChild(writeLink)
+        const writeBtn = document.createElement('button')
+        writeBtn.type = 'button'
+        writeBtn.className = 'shell__pill shell__pill--small'
+        writeBtn.textContent = 'Написать'
+        writeBtn.addEventListener('click', (e) => openTelegramChat(a.client_telegram_id!, e))
+        item.appendChild(writeBtn)
       }
       const isFutureConfirmed =
         a.status === 'confirmed' && new Date(a.datetime_local) > new Date()
@@ -603,12 +603,12 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
       const actions = document.createElement('div')
       actions.className = 'shell__client-actions'
       if (c.telegram_id != null) {
-        const writeLink = document.createElement('a')
-        writeLink.href = `tg://user?id=${c.telegram_id}`
-        writeLink.className = 'shell__pill shell__pill--small'
-        writeLink.textContent = 'Написать'
-        writeLink.addEventListener('click', (e) => openTelegramChat(c.telegram_id!, e))
-        actions.appendChild(writeLink)
+        const writeBtn = document.createElement('button')
+        writeBtn.type = 'button'
+        writeBtn.className = 'shell__pill shell__pill--small'
+        writeBtn.textContent = 'Написать'
+        writeBtn.addEventListener('click', (e) => openTelegramChat(c.telegram_id!, e))
+        actions.appendChild(writeBtn)
       }
       const bookingBtn = document.createElement('button')
       bookingBtn.type = 'button'

@@ -523,6 +523,11 @@ a.shell__pill {
   opacity: 0.6;
 }
 
+.shell__cal-cell--past {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .shell__cal-cell--active {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: #ffffff;

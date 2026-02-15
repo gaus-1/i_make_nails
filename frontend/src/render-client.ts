@@ -220,6 +220,7 @@ function renderMyAppointments(main: HTMLElement, scheduleRender: () => void): vo
 }
 
 function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
+  const todayStr = toYYYYMMDD(new Date())
   const layout = document.createElement('section')
   layout.className = 'shell__layout'
 
@@ -311,25 +312,36 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         isOtherMonth = true
       }
       const dateStr = toYYYYMMDD(cellDate)
+      const isPast = dateStr < todayStr
       const cell = document.createElement('button')
       cell.type = 'button'
       cell.className = 'shell__cal-cell'
       if (isOtherMonth) cell.classList.add('shell__cal-cell--other')
+      if (isPast) cell.classList.add('shell__cal-cell--past')
       if (state.selectedDate === dateStr) cell.classList.add('shell__cal-cell--active')
       cell.textContent = String(cellDate.getDate())
       cell.dataset.date = dateStr
-      cell.addEventListener('click', () => {
-        state.selectedDate = dateStr
-        state.selectedSlotUtc = null
-        scheduleRender()
-        loadSlots(dateStr, scheduleRender)
-      })
+      cell.disabled = isPast
+      if (!isPast) {
+        cell.addEventListener('click', () => {
+          state.selectedDate = dateStr
+          state.selectedSlotUtc = null
+          scheduleRender()
+          loadSlots(dateStr, scheduleRender)
+        })
+      }
       grid.appendChild(cell)
     }
     calendarWrap.appendChild(grid)
 
     if (state.selectedDate) {
-      if (state.loading) {
+      const selectedDatePast = state.selectedDate < todayStr
+      if (selectedDatePast) {
+        const pastHint = document.createElement('p')
+        pastHint.className = 'shell__hint'
+        pastHint.textContent = 'Выберите дату сегодня или в будущем.'
+        calendarWrap.appendChild(pastHint)
+      } else if (state.loading) {
         const loadHint = document.createElement('p')
         loadHint.className = 'shell__hint'
         loadHint.textContent = 'Загрузка слотов…'
@@ -386,7 +398,11 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   confirmBtn.className = 'shell__pill shell__pill--primary'
   confirmBtn.type = 'button'
   const canConfirm =
-    state.selectedSlotUtc && !state.loading && !state.submitting
+    state.selectedSlotUtc &&
+    !state.loading &&
+    !state.submitting &&
+    state.selectedDate !== null &&
+    state.selectedDate >= todayStr
   confirmBtn.disabled = !canConfirm
   confirmBtn.textContent = state.submitting
     ? 'Подождите…'

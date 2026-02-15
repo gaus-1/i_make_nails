@@ -131,6 +131,7 @@ export function authHeaders(): HeadersInit {
 
 const ERROR_CODE_MESSAGES: Record<string, string> = {
   slot_busy: 'Это время уже занято, выберите другое.',
+  slot_in_past: 'Нельзя записаться на прошедшую дату. Выберите сегодня или позже.',
   booking_disabled: 'Запись временно отключена.',
   client_blocked: 'Онлайн-запись для вас недоступна.',
   invalid_init_data: 'Не удалось загрузить. Нажмите «Повторить».',
