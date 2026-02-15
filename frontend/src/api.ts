@@ -30,15 +30,121 @@ export type Appointment = {
   source: string
 }
 
+/** Цвета темы Telegram (см. ThemeParams). */
+export type TelegramThemeParams = {
+  bg_color?: string
+  text_color?: string
+  hint_color?: string
+  link_color?: string
+  button_color?: string
+  button_text_color?: string
+  secondary_bg_color?: string
+  header_bg_color?: string
+}
+
+/** Кнопка «Назад» в шапке Mini App (BackButton). */
+export interface TelegramBackButton {
+  isVisible: boolean
+  onClick: (callback: () => void) => TelegramBackButton
+  offClick: (callback: () => void) => TelegramBackButton
+  show: () => TelegramBackButton
+  hide: () => TelegramBackButton
+}
+
+/** Нижняя кнопка: main или secondary (BottomButton). */
+export interface TelegramBottomButton {
+  readonly type: 'main' | 'secondary'
+  text: string
+  color: string
+  textColor: string
+  isVisible: boolean
+  isActive: boolean
+  hasShineEffect?: boolean
+  position?: 'left' | 'right' | 'top' | 'bottom'
+  readonly isProgressVisible: boolean
+  setText: (text: string) => TelegramBottomButton
+  onClick: (callback: () => void) => TelegramBottomButton
+  offClick: (callback: () => void) => TelegramBottomButton
+  show: () => TelegramBottomButton
+  hide: () => TelegramBottomButton
+  enable: () => TelegramBottomButton
+  disable: () => TelegramBottomButton
+  showProgress: (leaveActive?: boolean) => TelegramBottomButton
+  hideProgress: () => TelegramBottomButton
+  setParams: (params: Partial<{ text: string; color: string; text_color: string; has_shine_effect: boolean; position: string; is_active: boolean; is_visible: boolean }>) => TelegramBottomButton
+}
+
+/** Параметры запуска DeviceOrientation. */
+export interface TelegramDeviceOrientationStartParams {
+  refresh_rate?: number
+  need_absolute?: boolean
+}
+
+/** Ориентация устройства (DeviceOrientation). */
+export interface TelegramDeviceOrientation {
+  isStarted: boolean
+  absolute: boolean
+  alpha: number
+  beta: number
+  gamma: number
+  start: (params?: TelegramDeviceOrientationStartParams, callback?: (success: boolean) => void) => TelegramDeviceOrientation
+  stop: (callback?: (success: boolean) => void) => TelegramDeviceOrientation
+}
+
+/** Тактильная отдача (HapticFeedback). */
+export interface TelegramHapticFeedback {
+  impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => TelegramHapticFeedback
+  notificationOccurred: (type: 'error' | 'success' | 'warning') => TelegramHapticFeedback
+  selectionChanged: () => TelegramHapticFeedback
+}
+
+/** Параметры emoji-статуса (EmojiStatusParams). */
+export interface TelegramEmojiStatusParams {
+  duration?: number
+}
+
+/** Кнопка в нативном попапе (PopupButton). */
+export interface TelegramPopupButton {
+  id?: string
+  type?: 'default' | 'ok' | 'close' | 'cancel' | 'destructive'
+  text?: string
+}
+
+/** Пользователь Mini App (WebAppUser). */
+export interface TelegramWebAppUser {
+  id: number
+  is_bot?: boolean
+  first_name: string
+  last_name?: string
+  username?: string
+  language_code?: string
+  is_premium?: boolean
+  added_to_attachment_menu?: boolean
+  allows_write_to_pm?: boolean
+  photo_url?: string
+}
+
 declare global {
   interface Window {
     Telegram?: {
       WebApp?: {
         initData?: string
-        initDataUnsafe?: { user?: { id: number; first_name?: string; last_name?: string } }
+        initDataUnsafe?: { user?: TelegramWebAppUser }
+        themeParams?: TelegramThemeParams
+        colorScheme?: 'light' | 'dark'
+        BackButton?: TelegramBackButton
+        MainButton?: TelegramBottomButton
+        SecondaryButton?: TelegramBottomButton
+        HapticFeedback?: TelegramHapticFeedback
+        DeviceOrientation?: TelegramDeviceOrientation
         openLink?: (url: string) => void
         openTelegramLink?: (url: string) => void
         ready?: () => void
+        expand?: () => void
+        setHeaderColor?: (color: string) => void
+        setBackgroundColor?: (color: string) => void
+        onEvent?: (eventType: string, handler: () => void) => void
+        showAlert?: (message: string) => void
       }
     }
   }

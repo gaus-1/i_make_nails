@@ -1,10 +1,11 @@
+/* Fallback-цвета; в Mini App Telegram подставляются var(--tg-theme-*). */
 :root {
-  --bg-page: #f8fafc;
-  --bg-card: #ffffff;
-  --bg-card-soft: #f1f5f9;
+  --bg-page: var(--tg-theme-bg-color, #f8fafc);
+  --bg-card: var(--tg-theme-bg-color, #ffffff);
+  --bg-card-soft: var(--tg-theme-secondary-bg-color, #f1f5f9);
   --border-subtle: #e2e8f0;
-  --text-main: #0f172a;
-  --text-muted: #6b7280;
+  --text-main: var(--tg-theme-text-color, #0f172a);
+  --text-muted: var(--tg-theme-hint-color, #6b7280);
   --accent: #f97362;
   --accent-strong: #ef4444;
   --accent-soft: rgba(249, 115, 98, 0.08);
@@ -43,11 +44,11 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   height: 100%;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bg-page);
   font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif;
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--tg-safe-area-inset-top, env(safe-area-inset-top));
 }
 
 #app {
@@ -55,16 +56,16 @@ body {
   justify-content: center;
   align-items: stretch;
   padding: 0 12px 12px;
-  padding-left: max(12px, env(safe-area-inset-left));
-  padding-right: max(12px, env(safe-area-inset-right));
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-left: max(12px, var(--tg-safe-area-inset-left, env(safe-area-inset-left)));
+  padding-right: max(12px, var(--tg-safe-area-inset-right, env(safe-area-inset-right)));
+  padding-bottom: max(12px, var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom)));
 }
 
 .shell {
   width: 100%;
   min-width: 0;
   max-width: 420px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bg-card);
   border-radius: 28px;
   box-shadow: var(--shadow-soft);
   padding: 2px 18px 10px;
@@ -941,6 +942,25 @@ a.shell__pill {
 
 .shell__settings-ws-title {
   margin-top: 5px;
+}
+
+.shell__settings-ws-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  font-size: inherit;
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: left;
+  font-weight: 600;
+}
+
+.shell__settings-ws-block {
+  margin-top: 2px;
 }
 
 .shell button {

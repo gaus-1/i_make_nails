@@ -73,6 +73,7 @@ export const state = {
   masterSlotDurationMinutes: null as number | null,
   masterClients: [] as MasterClient[],
   masterSettings: null as MasterSettings | null,
+  masterSettingsLoading: false,
   masterBlockedSlots: [] as BlockedSlotItem[],
   masterLoading: false,
   masterError: null as string | null,
@@ -82,4 +83,6 @@ export const state = {
   masterRescheduleAppointmentId: null as number | null,
   masterRescheduleDate: null as string | null,
   masterRescheduleSlots: [] as Slot[],
+  /** Свёрнут ли блок «Рабочие часы» в настройках (по умолчанию развёрнут). */
+  masterSettingsWorkScheduleCollapsed: false,
 }

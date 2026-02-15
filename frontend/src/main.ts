@@ -10,6 +10,17 @@ import { initMaster, renderMaster } from './render-master'
 const app = document.querySelector<HTMLDivElement>('#app')
 if (!app) throw new Error('Root element #app not found')
 
+/** Применить цвета темы Telegram к шапке и фону (Design guidelines, Color schemes). */
+function applyTelegramTheme(): void {
+  const webApp = window.Telegram?.WebApp
+  if (!webApp) return
+  const theme = webApp.themeParams
+  const bg = theme?.bg_color ?? 'bg_color'
+  const secondary = theme?.secondary_bg_color ?? 'secondary_bg_color'
+  webApp.setHeaderColor?.(bg)
+  webApp.setBackgroundColor?.(secondary)
+}
+
 /** Даём Telegram время подставить initData/hash, затем вызываем ready и продолжаем. */
 function whenWebAppReady(cb: () => void): void {
   if (typeof window === 'undefined') {
@@ -17,7 +28,11 @@ function whenWebAppReady(cb: () => void): void {
     return
   }
   const run = (): void => {
-    window.Telegram?.WebApp?.ready?.()
+    const webApp = window.Telegram?.WebApp
+    webApp?.ready?.()
+    applyTelegramTheme()
+    webApp?.expand?.()
+    webApp?.onEvent?.('themeChanged', applyTelegramTheme)
     cb()
   }
   if (window.Telegram?.WebApp) {

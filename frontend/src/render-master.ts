@@ -23,26 +23,40 @@ import { addDays, formatSlotTime, toYYYYMMDD } from './utils'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-/** Открыть чат с пользователем в Telegram. tg://user?id= в части клиентов не поддерживается в openTelegramLink — используем window.open как обход. */
+/** Открыть чат с пользователем в Telegram. Вызов откладываем, чтобы клик не перехватывался и ссылка не блокировалась. */
 function openTelegramChat(telegramId: number, e?: MouseEvent): void {
   e?.preventDefault()
+  e?.stopPropagation()
+  window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light')
   const url = `tg://user?id=${telegramId}`
   const webApp = window.Telegram?.WebApp
-  if (webApp?.openTelegramLink) {
+  const tryOpen = (): void => {
+    if (webApp?.openTelegramLink) {
+      try {
+        webApp.openTelegramLink(url)
+        return
+      } catch {
+        /* в части клиентов tg:// выдаёт "Url protocol is not supported" */
+      }
+    }
+    if (webApp?.openLink) {
+      try {
+        webApp.openLink(url)
+        return
+      } catch {
+        /* fallback дальше */
+      }
+    }
+    const w = window.open(url, '_blank')
+    if (w) return
     try {
-      webApp.openTelegramLink(url)
-      return
+      if (webApp?.openLink) webApp.openLink(url)
+      else window.location.href = url
     } catch {
-      /* в части клиентов tg:// выдаёт "Url protocol is not supported" */
+      webApp?.showAlert?.(`Не удалось открыть чат. Найдите в Telegram по ID: ${telegramId}`)
     }
   }
-  const w = window.open(url, '_blank')
-  if (w) return
-  if (webApp?.openLink) {
-    webApp.openLink(url)
-    return
-  }
-  window.location.href = url
+  setTimeout(tryOpen, 50)
 }
 /** Обёртка: выставляет masterLoading и перерисовывает после загрузки. Не вызывает scheduleRender до завершения — иначе при открытии Настроек получается двойной shell. */
 async function withMasterLoading(
@@ -174,30 +188,36 @@ async function loadMasterClients(scheduleRender: () => void): Promise<void> {
   })
 }
 
+/** Загрузка настроек без глобального masterLoading — не блокирует вкладки Расписание/Клиенты. */
 async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
-  await withMasterLoading(scheduleRender, async () => {
-    const uid = getTelegramIdForRequest(state.telegramId)
-    const tab = state.masterTab
-    state.masterError = null
-    const settingsUrl = appendTelegramIdToUrl(API.masterSettings, uid)
-    const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(settingsUrl)
+  const uid = getTelegramIdForRequest(state.telegramId)
+  const tab = state.masterTab
+  state.masterError = null
+  state.masterSettingsLoading = true
+  scheduleRender()
+  const settingsUrl = appendTelegramIdToUrl(API.masterSettings, uid)
+  const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(settingsUrl)
+  try {
+    let data: MasterSettings
     try {
-      let data: MasterSettings
-      try {
-        data = await tryFetch()
-      } catch {
-        await new Promise((r) => setTimeout(r, 500))
-        if (state.masterTab !== tab) return
-        data = await tryFetch()
-      }
-      if (state.masterTab !== tab) return
-      state.masterSettings = data
+      data = await tryFetch()
     } catch {
+      await new Promise((r) => setTimeout(r, 400))
       if (state.masterTab !== tab) return
-      state.masterSettings = null
-      state.masterError = 'Не удалось загрузить настройки.'
+      data = await tryFetch()
     }
-  })
+    if (state.masterTab !== tab) return
+    state.masterSettings = data
+  } catch {
+    if (state.masterTab !== tab) return
+    state.masterSettings = null
+    state.masterError = 'Не удалось загрузить настройки.'
+  } finally {
+    if (state.masterTab === tab) {
+      state.masterSettingsLoading = false
+      scheduleRender()
+    }
+  }
 }
 
 function getMonthRange(): { from: string; to: string } {
@@ -636,12 +656,12 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
   if (!state.masterSettings) {
     const p = document.createElement('p')
     p.className = 'shell__section-caption'
-    p.textContent = state.masterError ? state.masterError : 'Загрузка…'
+    p.textContent = state.masterError ?? 'Загрузка…'
     card.appendChild(p)
-    if (!state.masterLoading && !state.masterError) {
+    if (!state.masterSettingsLoading && !state.masterError) {
       loadMasterSettings(scheduleRender)
     }
-  } else if (state.masterSettings) {
+  } else {
     const s = state.masterSettings
     const bookingWrap = document.createElement('div')
     bookingWrap.className = 'shell__form-block'
@@ -658,53 +678,65 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
     bookingWrap.appendChild(bookingLabel)
     card.appendChild(bookingWrap)
 
-    const wsTitle = document.createElement('h3')
-    wsTitle.className = 'shell__section-caption shell__settings-ws-title'
-    wsTitle.textContent = 'Рабочие часы по дням'
-    card.appendChild(wsTitle)
-    const byDay = new Map<number, WorkScheduleItem>()
-    for (const ws of s.work_schedule) byDay.set(ws.day_of_week, ws)
-    for (let d = 0; d < 7; d++) {
-      const row = document.createElement('div')
-      row.className = 'shell__settings-row'
-      const item = byDay.get(d)
-      const startInput = document.createElement('input')
-      startInput.type = 'time'
-      startInput.className = 'shell__input'
-      startInput.value = item ? formatTimeInput(item.time_start) : '08:00'
-      const endInput = document.createElement('input')
-      endInput.type = 'time'
-      endInput.className = 'shell__input'
-      endInput.value = item ? formatTimeInput(item.time_end) : '21:30'
-      row.appendChild(document.createTextNode(DAY_NAMES[d] + ' '))
-      row.appendChild(startInput)
-      row.appendChild(document.createTextNode(' – '))
-      row.appendChild(endInput)
-      const saveBtn = document.createElement('button')
-      saveBtn.className = 'shell__pill shell__pill--small'
-      saveBtn.type = 'button'
-      saveBtn.disabled = state.masterSavingDay === d
-      saveBtn.textContent = state.masterSavingDay === d ? 'Подождите…' : 'Сохранить'
-      saveBtn.addEventListener('click', async () => {
-        const rest = s.work_schedule.filter((w) => w.day_of_week !== d)
-        const start = startInput.value.length === 5 ? startInput.value + ':00' : startInput.value
-        const end = endInput.value.length === 5 ? endInput.value + ':00' : endInput.value
-        const newWs = [...rest, { day_of_week: d, time_start: start, time_end: end }]
-        state.masterSavingDay = d
-        scheduleRender()
-        try {
-          await patchMasterSettings(
-            { work_schedule: newWs.map((w) => ({ day_of_week: w.day_of_week, time_start: w.time_start, time_end: w.time_end })) },
-            scheduleRender
-          )
-        } finally {
-          state.masterSavingDay = null
+    const wsHeader = document.createElement('button')
+    wsHeader.type = 'button'
+    wsHeader.className = 'shell__settings-ws-toggle'
+    wsHeader.textContent = state.masterSettingsWorkScheduleCollapsed
+      ? 'Рабочие часы по дням ▶'
+      : 'Рабочие часы по дням ▼'
+    wsHeader.addEventListener('click', () => {
+      state.masterSettingsWorkScheduleCollapsed = !state.masterSettingsWorkScheduleCollapsed
+      scheduleRender()
+    })
+    card.appendChild(wsHeader)
+    const wsBlock = document.createElement('div')
+    wsBlock.className = 'shell__settings-ws-block'
+    if (!state.masterSettingsWorkScheduleCollapsed) {
+      const byDay = new Map<number, WorkScheduleItem>()
+      for (const ws of s.work_schedule) byDay.set(ws.day_of_week, ws)
+      for (let d = 0; d < 7; d++) {
+        const row = document.createElement('div')
+        row.className = 'shell__settings-row'
+        const item = byDay.get(d)
+        const startInput = document.createElement('input')
+        startInput.type = 'time'
+        startInput.className = 'shell__input'
+        startInput.value = item ? formatTimeInput(item.time_start) : '08:00'
+        const endInput = document.createElement('input')
+        endInput.type = 'time'
+        endInput.className = 'shell__input'
+        endInput.value = item ? formatTimeInput(item.time_end) : '21:30'
+        row.appendChild(document.createTextNode(DAY_NAMES[d] + ' '))
+        row.appendChild(startInput)
+        row.appendChild(document.createTextNode(' – '))
+        row.appendChild(endInput)
+        const saveBtn = document.createElement('button')
+        saveBtn.className = 'shell__pill shell__pill--small'
+        saveBtn.type = 'button'
+        saveBtn.disabled = state.masterSavingDay === d
+        saveBtn.textContent = state.masterSavingDay === d ? 'Подождите…' : 'Сохранить'
+        saveBtn.addEventListener('click', async () => {
+          const rest = s.work_schedule.filter((w) => w.day_of_week !== d)
+          const start = startInput.value.length === 5 ? startInput.value + ':00' : startInput.value
+          const end = endInput.value.length === 5 ? endInput.value + ':00' : endInput.value
+          const newWs = [...rest, { day_of_week: d, time_start: start, time_end: end }]
+          state.masterSavingDay = d
           scheduleRender()
-        }
-      })
-      row.appendChild(saveBtn)
-      card.appendChild(row)
+          try {
+            await patchMasterSettings(
+              { work_schedule: newWs.map((w) => ({ day_of_week: w.day_of_week, time_start: w.time_start, time_end: w.time_end })) },
+              scheduleRender
+            )
+          } finally {
+            state.masterSavingDay = null
+            scheduleRender()
+          }
+        })
+        row.appendChild(saveBtn)
+        wsBlock.appendChild(row)
+      }
     }
+    card.appendChild(wsBlock)
   }
   main.appendChild(card)
 }
@@ -821,6 +853,9 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
       scheduleRender()
       if (t.key === 'schedule') await loadMasterAppointments(scheduleRender)
       else if (t.key === 'clients') await loadMasterClients(scheduleRender)
+      else if (t.key === 'settings' && !state.masterSettings && !state.masterSettingsLoading) {
+        await loadMasterSettings(scheduleRender)
+      }
       else if (t.key === 'blocked') await loadMasterBlockedSlots(scheduleRender)
     })
     tabs.appendChild(btn)
