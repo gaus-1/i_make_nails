@@ -1,6 +1,15 @@
 /** Рендер панели мастера: расписание, клиенты, настройки. */
 
-import { API, apiGet, apiPatch, authHeaders, getTelegramUser, normalizeApiError, setTelegramIdFallback } from './api'
+import {
+  API,
+  apiGet,
+  apiPatch,
+  authHeaders,
+  getTelegramIdFromInitDataString,
+  getTelegramUser,
+  normalizeApiError,
+  setTelegramIdFallback,
+} from './api'
 import type { Slot } from './api'
 import {
   state,
@@ -148,11 +157,13 @@ async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
     const tab = state.masterTab
     state.masterError = null
     const getSettingsUrl = (): string => {
+      const initData = (typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData ?? '') : '').trim()
       const uid =
         getTelegramUser()?.id ??
         new URLSearchParams(window.location.search).get('telegram_id') ??
-        (state.telegramId != null ? String(state.telegramId) : null)
-      return uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
+        (state.telegramId != null ? String(state.telegramId) : null) ??
+        (initData ? getTelegramIdFromInitDataString(initData) : null)
+      return uid != null ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
     }
     const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(getSettingsUrl())
     try {
@@ -283,11 +294,13 @@ async function patchMasterSettings(
   scheduleRender: () => void
 ): Promise<void> {
   try {
+    const initData = (typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData ?? '') : '').trim()
     const uid =
       getTelegramUser()?.id ??
       new URLSearchParams(window.location.search).get('telegram_id') ??
-      (state.telegramId != null ? String(state.telegramId) : null)
-    const settingsUrl = uid ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
+      (state.telegramId != null ? String(state.telegramId) : null) ??
+      (initData ? getTelegramIdFromInitDataString(initData) : null)
+    const settingsUrl = uid != null ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
     const r = await fetch(settingsUrl, {
       method: 'PATCH',
       headers: authHeaders(),

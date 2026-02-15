@@ -50,6 +50,20 @@ export function getTelegramUser(): { id: number; name: string } | null {
   return { id: user.id, name }
 }
 
+/** Достать user.id из строки initData (на случай когда initDataUnsafe ещё не готов). */
+export function getTelegramIdFromInitDataString(initData: string): number | null {
+  if (!initData.trim()) return null
+  try {
+    const params = new URLSearchParams(initData)
+    const userStr = params.get('user')
+    if (!userStr) return null
+    const user = JSON.parse(decodeURIComponent(userStr)) as { id?: number }
+    return user?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 /** Есть ли данные для идентификации (initData или telegram_id в query/user). */
 export function hasAuthForRequest(): boolean {
   if (window.Telegram?.WebApp?.initData) return true
@@ -70,8 +84,12 @@ export function authHeaders(): HeadersInit {
   if (initData) (h as Record<string, string>)['X-Telegram-Init-Data'] = initData
   const user = getTelegramUser()
   const queryId = new URLSearchParams(window.location.search).get('telegram_id')
+  const fromInitData = initData ? getTelegramIdFromInitDataString(initData) : null
   const telegramId =
-    (user ? String(user.id) : null) ?? queryId ?? (telegramIdFallback != null ? String(telegramIdFallback) : null)
+    (user ? String(user.id) : null) ??
+    queryId ??
+    (fromInitData != null ? String(fromInitData) : null) ??
+    (telegramIdFallback != null ? String(telegramIdFallback) : null)
   if (telegramId) (h as Record<string, string>)['X-Telegram-Id'] = telegramId
   return h
 }
