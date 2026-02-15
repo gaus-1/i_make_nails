@@ -167,6 +167,8 @@ async def test_master_daily_schedule_shows_confirmed_appointments(
             params={"date": today.isoformat()},
         )
         assert resp.status == 400
+        bad_body = await resp.json()
+        assert bad_body.get("code") == "missing_telegram_id"
 
         # с Telegram ID мастера
         resp = await client.get(
@@ -521,6 +523,53 @@ async def test_master_settings_get_and_patch(
         )
         assert resp.status == 200
         assert (await resp.json())["timezone"] == "Asia/Yekaterinburg"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_master_settings_patch_work_schedule(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Мастер обновляет расписание работы (work_schedule); GET возвращает новые слоты."""
+    db = setup_in_memory_session(monkeypatch)
+    monkeypatch.setattr(settings, "master_telegram_ids", "111")
+    monkeypatch.setattr(settings, "admin_telegram_ids", "222")
+    monkeypatch.setattr(settings, "miniapp_auth", "dev")
+
+    master = Master(timezone="Europe/Moscow", booking_enabled=True)
+    db.add(master)
+    db.commit()
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+
+    try:
+        work_schedule = [
+            {"day_of_week": 0, "time_start": "09:00:00", "time_end": "13:00:00"},
+            {"day_of_week": 1, "time_start": "10:00:00", "time_end": "18:00:00"},
+        ]
+        resp = await client.patch(
+            "/api/miniapp/master/settings",
+            headers={"X-Telegram-Id": "111", "Content-Type": "application/json"},
+            json={"work_schedule": work_schedule},
+        )
+        assert resp.status == 200
+        payload = await resp.json()
+        assert len(payload["work_schedule"]) == 2
+        days = {ws["day_of_week"] for ws in payload["work_schedule"]}
+        assert days == {0, 1}
+        assert payload["work_schedule"][0]["time_start"] == "09:00:00"
+        assert payload["work_schedule"][0]["time_end"] == "13:00:00"
+
+        resp2 = await client.get(
+            "/api/miniapp/master/settings",
+            headers={"X-Telegram-Id": "111"},
+        )
+        assert resp2.status == 200
+        assert len((await resp2.json())["work_schedule"]) == 2
     finally:
         await client.close()
 

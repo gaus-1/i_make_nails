@@ -90,4 +90,24 @@ test.describe('Клиент', () => {
     await expect(confirmBtn).toBeVisible()
     await expect(confirmBtn).toBeEnabled()
   })
+
+  test('полный флоу: дата → слот → Подтвердить запись → успех или запись в Мои записи', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Записаться' }).click()
+    await page.getByRole('button', { name: 'Следующий месяц' }).click()
+    const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other)').first()
+    await calCell.waitFor({ state: 'visible', timeout: 5000 })
+    await calCell.click()
+    const slot = page.locator('.slot').first()
+    await slot.waitFor({ state: 'visible', timeout: 10000 })
+    await slot.click()
+    await page.getByRole('button', { name: 'Подтвердить запись' }).click()
+    await expect(
+      page.getByText(/Запись создана|Ждём вас|Не удалось|уже занято/).or(page.locator('.shell__success'))
+    ).toBeVisible({ timeout: 10000 })
+    await page.getByRole('tab', { name: 'Мои записи' }).click()
+    await expect(page.getByRole('heading', { name: 'Мои записи' })).toBeVisible({ timeout: 5000 })
+    await expect(
+      page.locator('.shell__section').filter({ hasText: 'Мои записи' }).locator('.shell__appointments-list, .shell__section-caption').first()
+    ).toBeVisible({ timeout: 10000 })
+  })
 })

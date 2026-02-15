@@ -2,6 +2,7 @@ import { expect } from '@playwright/test'
 import { test } from '@playwright/test'
 
 const MASTER_ID = process.env.E2E_MASTER_TELEGRAM_ID ?? '111'
+const OWNER_ID = process.env.E2E_OWNER_TELEGRAM_ID ?? '963126718'
 
 test.describe('Панель мастера', () => {
   test.beforeEach(async ({ page }) => {
@@ -51,13 +52,23 @@ test.describe('Панель мастера', () => {
     await expect(page.locator('input[type="date"]').first()).toBeVisible()
   })
 
-  test('кнопка Как клиент: переход по URL, затем либо вид клиента либо редирект в панель мастера', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Как клиент' })).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: 'Как клиент' }).click()
-    await expect(page).toHaveURL(/\?telegram_id=/, { timeout: 5000 })
-    await expect(
-      page.getByRole('tab', { name: 'Записаться' }).or(page.getByRole('tab', { name: 'Расписание' }))
-    ).toBeVisible({ timeout: 8000 })
+  test('для обычного мастера кнопка Как клиент не отображается', async ({ page }) => {
+    await expect(page.getByRole('tab', { name: 'Расписание' })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('button', { name: 'Как клиент' })).toBeHidden()
+  })
+
+  test.describe('владелец (кнопка Как клиент)', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto(`/?view=master&telegram_id=${OWNER_ID}`)
+    })
+    test('кнопка Как клиент видна и переход на вид клиента', async ({ page }) => {
+      await expect(page.getByRole('button', { name: 'Как клиент' })).toBeVisible({ timeout: 5000 })
+      await page.getByRole('button', { name: 'Как клиент' }).click()
+      await expect(page).toHaveURL(/\?telegram_id=/, { timeout: 5000 })
+      await expect(
+        page.getByRole('tab', { name: 'Записаться' }).or(page.getByRole('tab', { name: 'Расписание' }))
+      ).toBeVisible({ timeout: 8000 })
+    })
   })
 
   test('расписание: переключение День / Неделя / Месяц', async ({ page }) => {

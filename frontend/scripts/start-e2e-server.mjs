@@ -29,8 +29,8 @@ const env = {
   DATABASE_URL: `sqlite:///${e2eDbName}`,
   TELEGRAM_BOT_TOKEN: 'e2e-placeholder',
   SECRET_KEY: 'e2e-secret',
-  MASTER_TELEGRAM_IDS: '111',
-  ADMIN_TELEGRAM_IDS: '111',
+  MASTER_TELEGRAM_IDS: process.env.E2E_MASTER_TELEGRAM_IDS ?? '111,963126718',
+  ADMIN_TELEGRAM_IDS: process.env.E2E_ADMIN_TELEGRAM_IDS ?? '111,963126718',
   WEBHOOK_DOMAIN: 'localhost',
   MINIAPP_AUTH: 'dev',
 }
