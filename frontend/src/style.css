@@ -703,6 +703,18 @@ body {
   margin-top: 12px;
 }
 
+.shell__main--master .shell__tabpanel .shell__section--settings {
+  margin-top: 8px;
+  padding-top: 6px;
+  padding-bottom: 8px;
+}
+
+.shell__section--settings .shell__input {
+  padding: 4px 6px;
+  font-size: 12px;
+  min-height: 32px;
+}
+
 .shell__main--master .shell__period-tab {
   text-align: center;
   justify-content: center;
@@ -844,8 +856,26 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 5px;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.shell__section--settings .shell__settings-row {
+  margin-bottom: 2px;
+  gap: 3px;
+}
+
+.shell__section--settings .shell__section-title {
+  margin-bottom: 4px;
+}
+
+.shell__section--settings .shell__form-block,
+.shell__section--settings .shell__settings-ws-title {
+  margin-bottom: 4px;
+}
+
+.shell__section--settings .shell__settings-ws-title {
+  margin-top: 2px;
 }
 
 .shell__label-row {
@@ -1075,6 +1105,12 @@ select:focus-visible {
   .shell__settings-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .shell__section--settings .shell__settings-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   .shell__settings-row .shell__input {

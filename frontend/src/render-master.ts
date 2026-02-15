@@ -619,7 +619,7 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
 
 function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void {
   const card = document.createElement('section')
-  card.className = 'shell__card shell__section'
+  card.className = 'shell__card shell__section shell__section--settings'
   const title = document.createElement('h2')
   title.className = 'shell__section-title'
   title.textContent = 'Настройки'
@@ -672,7 +672,7 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
       row.appendChild(document.createTextNode(' – '))
       row.appendChild(endInput)
       const saveBtn = document.createElement('button')
-      saveBtn.className = 'shell__pill'
+      saveBtn.className = 'shell__pill shell__pill--small'
       saveBtn.type = 'button'
       saveBtn.disabled = state.masterSavingDay === d
       saveBtn.textContent = state.masterSavingDay === d ? 'Подождите…' : 'Сохранить'
