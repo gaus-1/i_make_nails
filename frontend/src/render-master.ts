@@ -333,7 +333,6 @@ function renderAppointmentList(
   container: HTMLElement,
   appointments: MasterAppointment[],
   showSlots: Slot[],
-  slotDurationMinutes: number | null,
   scheduleRender: () => void
 ): void {
   const subApp = document.createElement('h3')
@@ -407,13 +406,6 @@ function renderAppointmentList(
       slotsRow.appendChild(span)
     }
     container.appendChild(slotsRow)
-  }
-  if (slotDurationMinutes != null) {
-    const dur = slotDurationMinutes
-    const hint = document.createElement('p')
-    hint.className = 'shell__section-caption shell__hint'
-    hint.textContent = dur >= 60 ? `Окна по ${dur / 60} ч` : `Окна по ${dur} мин`
-    container.appendChild(hint)
   }
 }
 
@@ -537,7 +529,7 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
         (a) => (a.datetime_local.slice(0, 10)) === dateStr
       )
       const daySlots = state.masterSlotsByDate[dateStr] ?? []
-      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes, scheduleRender)
+      renderAppointmentList(dayCard, dayAppointments, daySlots, scheduleRender)
       container.appendChild(dayCard)
     }
     card.appendChild(container)
@@ -557,7 +549,7 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
         (a) => (a.datetime_local.slice(0, 10)) === dateStr
       )
       const daySlots = state.masterSlotsByDate[dateStr] ?? []
-      renderAppointmentList(dayCard, dayAppointments, daySlots, state.masterSlotDurationMinutes, scheduleRender)
+      renderAppointmentList(dayCard, dayAppointments, daySlots, scheduleRender)
       container.appendChild(dayCard)
     }
     card.appendChild(container)
@@ -566,7 +558,6 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
       card,
       state.masterAppointments,
       state.masterSlots,
-      state.masterSlotDurationMinutes,
       scheduleRender
     )
   }

@@ -57,11 +57,6 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
     state.userRole = data.role
     state.telegramId = data.telegram_id
     setTelegramIdFallback(data.telegram_id)
-    const params = new URLSearchParams(window.location.search)
-    if ((data.role === 'master' || data.role === 'admin') && params.get('view') !== 'master') {
-      switchToMasterView()
-      return
-    }
   } catch {
     state.userRole = null
     state.telegramId = null

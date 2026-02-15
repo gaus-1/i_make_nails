@@ -357,13 +357,6 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
             slotsRow.appendChild(slotBtn)
           }
           calendarWrap.appendChild(slotsRow)
-          if (state.slotDurationMinutes != null) {
-            const dur = state.slotDurationMinutes
-            const hint = document.createElement('p')
-            hint.className = 'shell__hint'
-            hint.textContent = dur >= 60 ? `Окна по ${dur / 60} ч` : `Окна по ${dur} мин`
-            calendarWrap.appendChild(hint)
-          }
         }
       }
     }
