@@ -39,6 +39,11 @@ function initAppView(): void {
   const params = new URLSearchParams(window.location.search)
   state.appView = params.get('view') === 'master' ? 'master' : 'client'
   if (state.appView === 'master') {
+    const tid = params.get('telegram_id')
+    if (tid) {
+      const n = parseInt(tid, 10)
+      if (Number.isInteger(n)) state.telegramId = n
+    }
     const user = getTelegramUser()
     if (user && !params.get('telegram_id')) {
       params.set('telegram_id', String(user.id))

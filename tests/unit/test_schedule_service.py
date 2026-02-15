@@ -1,4 +1,5 @@
 from datetime import date, time, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -142,3 +143,38 @@ def test_get_free_slots_no_work_schedule_returns_empty() -> None:
     )
     assert result.date == date(2026, 2, 9)
     assert result.slots_utc == []
+
+
+def test_slots_8_00_to_20_00_90_min() -> None:
+    """Слоты 8:00–9:30 … 20:00–21:30 (смена до 21:30), 9 окон по 90 мин."""
+    engine = create_engine("sqlite+pysqlite:///:memory:", echo=False)
+    Base.metadata.create_all(bind=engine)
+    SessionLocal = sessionmaker(bind=engine)
+    db = SessionLocal()
+    master = Master(timezone="Europe/Moscow", booking_enabled=True, slot_duration_minutes=90)
+    db.add(master)
+    db.flush()
+    db.add(
+        WorkSchedule(
+            master_id=master.id,
+            day_of_week=0,
+            time_start=time(8, 0),
+            time_end=time(21, 30),
+        )
+    )
+    db.commit()
+    master = db.execute(select(Master).limit(1)).scalars().first()
+    assert master
+
+    svc = ScheduleService(db)
+    target = date(2026, 2, 9)
+    result = svc.get_free_slots_for_date(
+        master_id=master.id,
+        target_date=target,
+        duration_minutes=master.slot_duration_minutes,
+    )
+    tz = ZoneInfo("Europe/Moscow")
+    slots_local = [s.astimezone(tz).time() for s in result.slots_utc]
+    assert len(slots_local) == 9
+    assert slots_local[0].hour == 8 and slots_local[0].minute == 0
+    assert slots_local[-1].hour == 20 and slots_local[-1].minute == 0
