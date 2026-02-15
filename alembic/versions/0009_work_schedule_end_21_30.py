@@ -5,7 +5,7 @@ from sqlalchemy import text
 from alembic import op
 
 revision = "0009_work_schedule_end_21_30"
-down_revision = "0008_work_schedule_end_22_30_last_slot_21"
+down_revision = "0008_work_schedule_end_2230"
 branch_labels = None
 depends_on = None
 
