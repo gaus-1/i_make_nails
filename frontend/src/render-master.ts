@@ -23,14 +23,15 @@ import { addDays, formatSlotTime, toYYYYMMDD } from './utils'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-/** Открыть чат с пользователем в Telegram. Вызов откладываем, чтобы клик не перехватывался и ссылка не блокировалась. */
+/** Открыть чат с пользователем в Telegram. openLink/openTelegramLink требуют вызова в контексте клика (user gesture). */
 function openTelegramChat(telegramId: number, e?: MouseEvent): void {
   e?.preventDefault()
   e?.stopPropagation()
   window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light')
-  const url = `tg://user?id=${telegramId}`
+  // openmessage — формат по документации для открытия чата по user_id; user?id — запасной вариант
+  const urls = [`tg://openmessage?user_id=${telegramId}`, `tg://user?id=${telegramId}`]
   const webApp = window.Telegram?.WebApp
-  const tryOpen = (): void => {
+  for (const url of urls) {
     if (webApp?.openTelegramLink) {
       try {
         webApp.openTelegramLink(url)
@@ -47,16 +48,17 @@ function openTelegramChat(telegramId: number, e?: MouseEvent): void {
         /* fallback дальше */
       }
     }
-    const w = window.open(url, '_blank')
+  }
+  setTimeout(() => {
+    const w = window.open(urls[0], '_blank')
     if (w) return
     try {
-      if (webApp?.openLink) webApp.openLink(url)
-      else window.location.href = url
+      if (webApp?.openLink) webApp.openLink(urls[0])
+      else window.location.href = urls[0]
     } catch {
       webApp?.showAlert?.(`Не удалось открыть чат. Найдите в Telegram по ID: ${telegramId}`)
     }
-  }
-  setTimeout(tryOpen, 50)
+  }, 0)
 }
 /** Обёртка: выставляет masterLoading и перерисовывает после загрузки. Не вызывает scheduleRender до завершения — иначе при открытии Настроек получается двойной shell. */
 async function withMasterLoading(
