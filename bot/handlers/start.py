@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from aiogram import Router
 from aiogram.filters import CommandStart
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, WebAppInfo
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from bot.api.deps import is_master_telegram_id
 from bot.config.settings import settings
@@ -15,12 +15,12 @@ def _base_url() -> str:
     return f"https://{settings.webhook_domain.rstrip('/')}"
 
 
-def _miniapp_keyboard(telegram_id: int | None) -> ReplyKeyboardMarkup:
-    """Клавиатура: «Открыть запись» для всех; «Панель мастера» только для MASTER_TELEGRAM_IDS (админ без мастера не видит)."""
+def _miniapp_keyboard(telegram_id: int | None) -> InlineKeyboardMarkup:
+    """Inline-кнопки Web App: с них Telegram передаёт initData (reply keyboard — нет)."""
     url = _base_url()
-    rows = [
+    rows: list[list[InlineKeyboardButton]] = [
         [
-            KeyboardButton(
+            InlineKeyboardButton(
                 text="Открыть запись",
                 web_app=WebAppInfo(url=url),
             )
@@ -29,13 +29,13 @@ def _miniapp_keyboard(telegram_id: int | None) -> ReplyKeyboardMarkup:
     if telegram_id is not None and is_master_telegram_id(telegram_id):
         rows.append(
             [
-                KeyboardButton(
+                InlineKeyboardButton(
                     text="Панель мастера",
                     web_app=WebAppInfo(url=f"{url}?view=master"),
                 )
             ]
         )
-    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 @router.message(CommandStart())
