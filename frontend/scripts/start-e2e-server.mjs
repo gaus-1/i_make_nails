@@ -2,7 +2,7 @@
  * Запуск E2E-сервера для Playwright: сборка фронта, копирование в static/, старт web_server с E2E_SERVER=1.
  * Запускать из корня репозитория: node frontend/scripts/start-e2e-server.mjs
  */
-import { cpSync, existsSync, mkdirSync, rmSync } from 'fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'fs'
 import { execSync, spawn } from 'child_process'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
@@ -10,6 +10,13 @@ import { fileURLToPath } from 'url'
 const root = join(fileURLToPath(import.meta.url), '..', '..', '..') // scripts -> frontend -> project root
 const frontendDir = join(root, 'frontend')
 const staticDir = join(root, 'static')
+
+// 0. Удалить старые E2E БД из корня
+try {
+  for (const name of readdirSync(root)) {
+    if (name.startsWith('e2e-') && name.endsWith('.db')) rmSync(join(root, name), { force: true })
+  }
+} catch (_) {}
 
 // 1. Сборка фронта (npm run build; e2e.db удаляется в web_server при E2E_SERVER=1)
 execSync('npm run build', { cwd: frontendDir, stdio: 'inherit', shell: true })
