@@ -401,7 +401,6 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
   confirmBtn.addEventListener('click', async () => {
     if (!state.selectedSlotUtc) return
     const user = getTelegramUser()
-    if (!user) return
     state.submitting = true
     state.error = null
     scheduleRender()
@@ -415,8 +414,8 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         await loadMyAppointments(scheduleRender)
       } else {
         await apiPost(API.createAppointment, {
-          telegram_id: user.id,
-          name: user.name,
+          telegram_id: user?.id ?? 0,
+          name: user?.name ?? 'Клиент',
           phone: null,
           slot_start_utc: state.selectedSlotUtc,
         })
@@ -426,7 +425,8 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
         state.selectedDate = null
       }
       scheduleRender()
-    } catch {
+    } catch (err) {
+      state.error = err instanceof Error ? err.message : 'Не удалось отправить запись.'
       scheduleRender()
     } finally {
       state.submitting = false

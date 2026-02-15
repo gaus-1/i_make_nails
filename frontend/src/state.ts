@@ -43,9 +43,13 @@ export type BlockedSlotItem = {
   reason: string | null
 }
 
+/** Telegram ID владельца: кнопка «Как клиент» в шапке мастера видна только ему. */
+export const OWNER_TELEGRAM_ID = 963126718
+
 export const state = {
   appView: 'client' as 'client' | 'master',
   userRole: null as string | null,
+  telegramId: null as number | null,
   view: 'booking' as 'booking' | 'my',
   selectedDate: null as string | null,
   slots: [] as Slot[],

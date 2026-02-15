@@ -3,12 +3,16 @@
 import './style.css'
 
 import { API, apiGet, getTelegramUser } from './api'
-import { state } from './state'
+import { state, OWNER_TELEGRAM_ID } from './state'
 import { renderClient } from './render-client'
 import { initMaster, renderMaster } from './render-master'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 if (!app) throw new Error('Root element #app not found')
+
+if (typeof window !== 'undefined') {
+  window.Telegram?.WebApp?.ready?.()
+}
 
 function initAppView(): void {
   const params = new URLSearchParams(window.location.search)
@@ -19,6 +23,7 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
   try {
     const data = await apiGet<{ telegram_id: number; role: string }>(API.me)
     state.userRole = data.role
+    state.telegramId = data.telegram_id
     const params = new URLSearchParams(window.location.search)
     if ((data.role === 'master' || data.role === 'admin') && params.get('view') !== 'master') {
       switchToMasterView()
@@ -26,6 +31,7 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
     }
   } catch {
     state.userRole = null
+    state.telegramId = null
   }
   scheduleRender()
 }
@@ -61,7 +67,7 @@ function render(): void {
       masterLink.addEventListener('click', switchToMasterView)
       header.appendChild(masterLink)
     }
-  } else {
+  } else if (state.telegramId === OWNER_TELEGRAM_ID) {
     const clientLink = document.createElement('button')
     clientLink.className = 'shell__pill'
     clientLink.type = 'button'

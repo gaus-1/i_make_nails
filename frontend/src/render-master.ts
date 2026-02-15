@@ -818,6 +818,15 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
 }
 
 export async function initMaster(scheduleRender: () => void): Promise<void> {
+  try {
+    const me = await apiGet<{ telegram_id: number; role: string }>(API.me)
+    state.telegramId = me.telegram_id
+    state.userRole = me.role
+  } catch {
+    state.telegramId = null
+    state.userRole = null
+  }
+  scheduleRender()
   if (state.masterTab === 'schedule') await loadMasterAppointments(scheduleRender)
   else if (state.masterTab === 'clients') await loadMasterClients(scheduleRender)
   else if (state.masterTab === 'settings') await loadMasterSettings(scheduleRender)
