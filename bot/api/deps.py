@@ -68,6 +68,9 @@ def get_telegram_id(request: web.Request) -> int:
 def get_telegram_id_from_request(request: web.Request) -> int:
     """Идентификация: initData (если валиден) или fallback на X-Telegram-Id при истечении/сбое."""
     init_data_raw = (request.headers.get("X-Telegram-Init-Data") or "").strip()
+    has_header = request.headers.get("X-Telegram-Id") is not None
+    has_query = request.query.get("telegram_id") is not None
+
     if init_data_raw and settings.miniapp_auth != "dev":
         validated = validate_init_data(
             init_data_raw,
@@ -78,7 +81,18 @@ def get_telegram_id_from_request(request: web.Request) -> int:
             user_id = get_user_id_from_validated(validated)
             if user_id is not None:
                 return user_id
-        logger.info("miniapp auth: initData missing or invalid, fallback to header/query")
+        logger.info(
+            "miniapp auth: initData len={} valid=no, fallback header={} query={}",
+            len(init_data_raw),
+            has_header,
+            has_query,
+        )
+    elif not init_data_raw:
+        logger.info(
+            "miniapp auth: initData empty, fallback header={} query={}",
+            has_header,
+            has_query,
+        )
     return get_telegram_id(request)
 
 

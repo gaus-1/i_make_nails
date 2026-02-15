@@ -2,7 +2,7 @@
 
 import './style.css'
 
-import { API, apiGet, getTelegramUser, setTelegramIdFallback } from './api'
+import { API, apiGet, appendTelegramIdToUrl, getTelegramIdForRequest, getTelegramUser, setTelegramIdFallback } from './api'
 import { state, OWNER_TELEGRAM_ID } from './state'
 import { renderClient } from './render-client'
 import { initMaster, renderMaster } from './render-master'
@@ -30,7 +30,9 @@ function initAppView(): void {
 
 export async function loadMe(scheduleRender: () => void): Promise<void> {
   try {
-    const data = await apiGet<{ telegram_id: number; role: string }>(API.me)
+    const data = await apiGet<{ telegram_id: number; role: string }>(
+      appendTelegramIdToUrl(API.me, getTelegramIdForRequest(state.telegramId))
+    )
     state.userRole = data.role
     state.telegramId = data.telegram_id
     setTelegramIdFallback(data.telegram_id)

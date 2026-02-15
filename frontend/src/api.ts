@@ -64,6 +64,24 @@ export function getTelegramIdFromInitDataString(initData: string): number | null
   }
 }
 
+/** Текущий telegram_id для запроса (все источники). stateTelegramId — из /me, передаёт вызывающий код. */
+export function getTelegramIdForRequest(stateTelegramId: number | null): number | null {
+  const user = getTelegramUser()
+  const queryId = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('telegram_id')
+  const parsedQuery = queryId ? parseInt(queryId, 10) : null
+  const initData =
+    typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData ?? '').trim() : ''
+  const fromInitData = initData ? getTelegramIdFromInitDataString(initData) : null
+  return (user ? user.id : null) ?? (Number.isInteger(parsedQuery) ? parsedQuery : null) ?? fromInitData ?? stateTelegramId ?? telegramIdFallback
+}
+
+/** Добавить telegram_id в URL (для надёжной передачи на бэкенд). */
+export function appendTelegramIdToUrl(url: string, telegramId: number | null): string {
+  if (telegramId == null) return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}telegram_id=${telegramId}`
+}
+
 /** Есть ли данные для идентификации (initData или telegram_id в query/user). */
 export function hasAuthForRequest(): boolean {
   if (window.Telegram?.WebApp?.initData) return true

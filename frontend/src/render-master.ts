@@ -4,9 +4,9 @@ import {
   API,
   apiGet,
   apiPatch,
+  appendTelegramIdToUrl,
   authHeaders,
-  getTelegramIdFromInitDataString,
-  getTelegramUser,
+  getTelegramIdForRequest,
   normalizeApiError,
   setTelegramIdFallback,
 } from './api'
@@ -68,6 +68,7 @@ function getMonthDayDates(dateStr: string): string[] {
 
 async function loadMasterAppointments(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
+    const uid = getTelegramIdForRequest(state.telegramId)
     const tab = state.masterTab
     const date = state.masterScheduleDate
     const view = state.masterScheduleView
@@ -75,7 +76,7 @@ async function loadMasterAppointments(scheduleRender: () => void): Promise<void>
       if (view === 'week') {
         const dateTo = toYYYYMMDD(addDays(parseDateStr(date), 6))
         const appointmentsRes = await apiGet<{ date: string; appointments: MasterAppointment[] }>(
-          API.masterAppointments(date, dateTo)
+          appendTelegramIdToUrl(API.masterAppointments(date, dateTo), uid)
         )
         if (state.masterTab !== tab || state.masterScheduleDate !== date) return
         state.masterAppointments = appointmentsRes.appointments
@@ -85,7 +86,9 @@ async function loadMasterAppointments(scheduleRender: () => void): Promise<void>
         }
         const slotResponses = await Promise.all(
           dayDates.map((d) =>
-            apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(API.slots(d))
+            apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(
+              appendTelegramIdToUrl(API.slots(d), uid)
+            )
           )
         )
         if (state.masterTab !== tab || state.masterScheduleDate !== date) return
@@ -100,13 +103,15 @@ async function loadMasterAppointments(scheduleRender: () => void): Promise<void>
         const dateTo = dayDates[dayDates.length - 1]
         const dateFrom = dayDates[0]
         const appointmentsRes = await apiGet<{ date: string; appointments: MasterAppointment[] }>(
-          API.masterAppointments(dateFrom, dateTo)
+          appendTelegramIdToUrl(API.masterAppointments(dateFrom, dateTo), uid)
         )
         if (state.masterTab !== tab || state.masterScheduleDate !== date) return
         state.masterAppointments = appointmentsRes.appointments
         const slotResponses = await Promise.all(
           dayDates.map((d) =>
-            apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(API.slots(d))
+            apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(
+              appendTelegramIdToUrl(API.slots(d), uid)
+            )
           )
         )
         if (state.masterTab !== tab || state.masterScheduleDate !== date) return
@@ -119,9 +124,11 @@ async function loadMasterAppointments(scheduleRender: () => void): Promise<void>
       } else {
         const [appointmentsRes, slotsRes] = await Promise.all([
           apiGet<{ date: string; appointments: MasterAppointment[] }>(
-            API.masterAppointments(date)
+            appendTelegramIdToUrl(API.masterAppointments(date), uid)
           ),
-          apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(API.slots(date)),
+          apiGet<{ date: string; slots: Slot[]; slot_duration_minutes: number }>(
+            appendTelegramIdToUrl(API.slots(date), uid)
+          ),
         ])
         if (state.masterTab !== tab || state.masterScheduleDate !== date) return
         state.masterAppointments = appointmentsRes.appointments
@@ -140,9 +147,12 @@ async function loadMasterAppointments(scheduleRender: () => void): Promise<void>
 
 async function loadMasterClients(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
+    const uid = getTelegramIdForRequest(state.telegramId)
     const tab = state.masterTab
     try {
-      const data = await apiGet<{ clients: MasterClient[] }>(API.masterClients)
+      const data = await apiGet<{ clients: MasterClient[] }>(
+        appendTelegramIdToUrl(API.masterClients, uid)
+      )
       if (state.masterTab !== tab) return
       state.masterClients = data.clients
     } catch {
@@ -154,18 +164,11 @@ async function loadMasterClients(scheduleRender: () => void): Promise<void> {
 
 async function loadMasterSettings(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
+    const uid = getTelegramIdForRequest(state.telegramId)
     const tab = state.masterTab
     state.masterError = null
-    const getSettingsUrl = (): string => {
-      const initData = (typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData ?? '') : '').trim()
-      const uid =
-        getTelegramUser()?.id ??
-        new URLSearchParams(window.location.search).get('telegram_id') ??
-        (state.telegramId != null ? String(state.telegramId) : null) ??
-        (initData ? getTelegramIdFromInitDataString(initData) : null)
-      return uid != null ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
-    }
-    const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(getSettingsUrl())
+    const settingsUrl = appendTelegramIdToUrl(API.masterSettings, uid)
+    const tryFetch = async (): Promise<MasterSettings> => apiGet<MasterSettings>(settingsUrl)
     try {
       let data: MasterSettings
       try {
@@ -196,11 +199,12 @@ function getMonthRange(): { from: string; to: string } {
 
 async function loadMasterBlockedSlots(scheduleRender: () => void): Promise<void> {
   await withMasterLoading(scheduleRender, async () => {
+    const uid = getTelegramIdForRequest(state.telegramId)
     const tab = state.masterTab
     try {
       const { from, to } = getMonthRange()
       const data = await apiGet<{ blocked_slots: BlockedSlotItem[] }>(
-        API.masterBlockedSlots(from, to)
+        appendTelegramIdToUrl(API.masterBlockedSlots(from, to), uid)
       )
       if (state.masterTab !== tab) return
       state.masterBlockedSlots = data.blocked_slots
@@ -212,8 +216,9 @@ async function loadMasterBlockedSlots(scheduleRender: () => void): Promise<void>
 }
 
 async function loadMasterRescheduleSlots(dateStr: string, scheduleRender: () => void): Promise<void> {
+  const uid = getTelegramIdForRequest(state.telegramId)
   try {
-    const data = await apiGet<{ slots: Slot[] }>(API.slots(dateStr))
+    const data = await apiGet<{ slots: Slot[] }>(appendTelegramIdToUrl(API.slots(dateStr), uid))
     if (state.masterRescheduleAppointmentId === null) return
     state.masterRescheduleSlots = data.slots
   } catch {
@@ -235,7 +240,8 @@ async function createBlockedSlot(
     }
     if (dateEnd !== dateStart) body.date_end = dateEnd
     if (reason) body.reason = reason
-    const r = await fetch(API.masterBlockedSlotsPost, {
+    const uid = getTelegramIdForRequest(state.telegramId)
+    const r = await fetch(appendTelegramIdToUrl(API.masterBlockedSlotsPost, uid), {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify(body),
@@ -250,8 +256,12 @@ async function createBlockedSlot(
 }
 
 async function deleteBlockedSlot(id: number, scheduleRender: () => void): Promise<void> {
+  const uid = getTelegramIdForRequest(state.telegramId)
   try {
-    const r = await fetch(API.masterBlockedSlot(id), { method: 'DELETE', headers: authHeaders() })
+    const r = await fetch(appendTelegramIdToUrl(API.masterBlockedSlot(id), uid), {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
     const text = await r.text()
     if (!r.ok) throw new Error(normalizeApiError(text))
     state.masterBlockedSlots = state.masterBlockedSlots.filter((b) => b.id !== id)
@@ -277,10 +287,12 @@ async function patchClientBookingAllowed(
   bookingAllowed: boolean,
   scheduleRender: () => void
 ): Promise<void> {
+  const uid = getTelegramIdForRequest(state.telegramId)
   try {
-    const updated = await apiPatch<MasterClient>(API.masterClient(clientId), {
-      booking_allowed: bookingAllowed,
-    })
+    const updated = await apiPatch<MasterClient>(
+      appendTelegramIdToUrl(API.masterClient(clientId), uid),
+      { booking_allowed: bookingAllowed }
+    )
     const idx = state.masterClients.findIndex((c) => c.id === clientId)
     if (idx >= 0) state.masterClients[idx] = updated
   } catch {
@@ -293,14 +305,9 @@ async function patchMasterSettings(
   payload: { booking_enabled?: boolean; timezone?: string; work_schedule?: { day_of_week: number; time_start: string; time_end: string }[] },
   scheduleRender: () => void
 ): Promise<void> {
+  const uid = getTelegramIdForRequest(state.telegramId)
   try {
-    const initData = (typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData ?? '') : '').trim()
-    const uid =
-      getTelegramUser()?.id ??
-      new URLSearchParams(window.location.search).get('telegram_id') ??
-      (state.telegramId != null ? String(state.telegramId) : null) ??
-      (initData ? getTelegramIdFromInitDataString(initData) : null)
-    const settingsUrl = uid != null ? `${API.masterSettings}?telegram_id=${uid}` : API.masterSettings
+    const settingsUrl = appendTelegramIdToUrl(API.masterSettings, uid)
     const r = await fetch(settingsUrl, {
       method: 'PATCH',
       headers: authHeaders(),
@@ -474,8 +481,9 @@ function renderScheduleTab(main: HTMLElement, scheduleRender: () => void): void 
       btn.addEventListener('click', async () => {
         const id = state.masterRescheduleAppointmentId
         if (id === null) return
+        const uid = getTelegramIdForRequest(state.telegramId)
         try {
-          await apiPatch(API.masterRescheduleAppointment(id), {
+          await apiPatch(appendTelegramIdToUrl(API.masterRescheduleAppointment(id), uid), {
             slot_start_utc: slot.start_utc_iso,
           })
           state.masterRescheduleAppointmentId = null
@@ -837,8 +845,11 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
 }
 
 export async function initMaster(scheduleRender: () => void): Promise<void> {
+  const uid = getTelegramIdForRequest(state.telegramId)
   try {
-    const me = await apiGet<{ telegram_id: number; role: string }>(API.me)
+    const me = await apiGet<{ telegram_id: number; role: string }>(
+      appendTelegramIdToUrl(API.me, uid)
+    )
     state.telegramId = me.telegram_id
     state.userRole = me.role
     setTelegramIdFallback(me.telegram_id)
