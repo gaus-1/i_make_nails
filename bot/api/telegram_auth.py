@@ -17,6 +17,7 @@ def validate_init_data(init_data_raw: str, bot_token: str, ttl_seconds: int = 86
     По документации Telegram: secret_key = HMAC_SHA256("WebAppData", bot_token);
     data_check_string — все пары кроме hash, сортировка по ключу, разделитель \\n.
     """
+    init_data_raw = (init_data_raw or "").strip()
     if not init_data_raw or not bot_token:
         return None
     try:

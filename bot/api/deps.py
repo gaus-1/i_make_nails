@@ -79,7 +79,7 @@ def get_telegram_id(request: web.Request) -> int:
 
 def get_telegram_id_from_request(request: web.Request) -> int:
     """Идентификация: initData (если валиден) или fallback на X-Telegram-Id при истечении/сбое."""
-    init_data_raw = request.headers.get("X-Telegram-Init-Data")
+    init_data_raw = (request.headers.get("X-Telegram-Init-Data") or "").strip()
     if init_data_raw and settings.miniapp_auth != "dev":
         validated = validate_init_data(
             init_data_raw,

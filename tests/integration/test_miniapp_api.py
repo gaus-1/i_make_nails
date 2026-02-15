@@ -526,6 +526,43 @@ async def test_master_settings_get_and_patch(
 
 
 @pytest.mark.asyncio
+async def test_auth_via_init_data_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prod: запрос только с X-Telegram-Init-Data (без X-Telegram-Id) даёт 200 и telegram_id из initData."""
+    from bot.api import deps
+
+    db = setup_in_memory_session(monkeypatch)
+    monkeypatch.setattr(settings, "master_telegram_ids", "111")
+    monkeypatch.setattr(settings, "admin_telegram_ids", "222")
+    monkeypatch.setattr(settings, "miniapp_auth", "prod")
+
+    master = Master(timezone="Europe/Moscow", booking_enabled=True)
+    db.add(master)
+    db.commit()
+
+    def _mock_validate(_raw: str, _token: str, ttl_seconds: int = 86400) -> dict | None:
+        return {"user": '{"id": 111}'}
+
+    monkeypatch.setattr(deps, "validate_init_data", _mock_validate)
+
+    app = create_test_app()
+    server = TestServer(app)
+    client = TestClient(server)
+    await client.start_server()
+
+    try:
+        resp = await client.get(
+            "/api/miniapp/me",
+            headers={"X-Telegram-Init-Data": "any"},
+        )
+        assert resp.status == 200
+        data = await resp.json()
+        assert data["telegram_id"] == 111
+        assert data["role"] == "master"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_blocked_slots_get_post_delete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
