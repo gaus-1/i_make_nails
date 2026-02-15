@@ -60,8 +60,8 @@ async def test_full_client_flow_create_and_list_appointments(
     db.add(master)
     db.flush()
 
-    # рабочее время: сегодня 10:00-14:00
-    today = date(2026, 2, 10)
+    # рабочее время: понедельник 10:00-14:00 (дата в будущем, чтобы не срабатывал slot_in_past)
+    today = date(2030, 2, 10)  # понедельник
     ws = WorkSchedule(
         master_id=master.id,
         day_of_week=today.weekday(),
@@ -899,7 +899,7 @@ async def test_create_appointment_slot_busy_409(monkeypatch: pytest.MonkeyPatch)
     )
     db.add(master)
     db.flush()
-    today = date(2026, 2, 10)
+    today = date(2030, 2, 10)  # в будущем, иначе API вернёт slot_in_past
     ws = WorkSchedule(
         master_id=master.id,
         day_of_week=today.weekday(),
@@ -910,7 +910,7 @@ async def test_create_appointment_slot_busy_409(monkeypatch: pytest.MonkeyPatch)
     client_model = Client(master_id=master.id, telegram_id=555, name="Клиент", phone=None)
     db.add(client_model)
     db.flush()
-    slot_start = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
+    slot_start = datetime(2030, 2, 10, 10, 0, tzinfo=UTC)
     existing = Appointment(
         master_id=master.id,
         client_id=client_model.id,
@@ -935,7 +935,7 @@ async def test_create_appointment_slot_busy_409(monkeypatch: pytest.MonkeyPatch)
                 "telegram_id": 555,
                 "name": "Другой",
                 "phone": None,
-                "slot_start_utc": "2026-02-10T10:00:00+00:00",
+                "slot_start_utc": "2030-02-10T10:00:00+00:00",
             },
         )
         assert resp.status == 409
