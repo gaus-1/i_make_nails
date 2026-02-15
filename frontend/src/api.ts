@@ -43,11 +43,28 @@ declare global {
   }
 }
 
+/** Сырая строка initData: из WebApp.initData или из location.hash (tgWebAppData). */
+export function getRawInitData(): string {
+  if (typeof window === 'undefined') return ''
+  const fromWebApp = (window.Telegram?.WebApp?.initData ?? '').trim()
+  if (fromWebApp) return fromWebApp
+  const hash = window.location.hash.slice(1)
+  if (!hash) return ''
+  const params = new URLSearchParams(hash)
+  const tgWebAppData = params.get('tgWebAppData') ?? ''
+  return tgWebAppData.trim()
+}
+
 export function getTelegramUser(): { id: number; name: string } | null {
   const user = window.Telegram?.WebApp?.initDataUnsafe?.user
-  if (!user?.id) return null
-  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Клиент'
-  return { id: user.id, name }
+  if (user?.id) {
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Клиент'
+    return { id: user.id, name }
+  }
+  const raw = getRawInitData()
+  const id = raw ? getTelegramIdFromInitDataString(raw) : null
+  if (id == null) return null
+  return { id, name: 'Клиент' }
 }
 
 /** Достать user.id из строки initData (на случай когда initDataUnsafe ещё не готов). */
@@ -69,8 +86,7 @@ export function getTelegramIdForRequest(stateTelegramId: number | null): number 
   const user = getTelegramUser()
   const queryId = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('telegram_id')
   const parsedQuery = queryId ? parseInt(queryId, 10) : null
-  const initData =
-    typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData ?? '').trim() : ''
+  const initData = getRawInitData()
   const fromInitData = initData ? getTelegramIdFromInitDataString(initData) : null
   return (user ? user.id : null) ?? (Number.isInteger(parsedQuery) ? parsedQuery : null) ?? fromInitData ?? stateTelegramId ?? telegramIdFallback
 }
@@ -84,7 +100,7 @@ export function appendTelegramIdToUrl(url: string, telegramId: number | null): s
 
 /** Есть ли данные для идентификации (initData или telegram_id в query/user). */
 export function hasAuthForRequest(): boolean {
-  if (window.Telegram?.WebApp?.initData) return true
+  if (getRawInitData()) return true
   if (getTelegramUser()?.id) return true
   if (new URLSearchParams(window.location.search).get('telegram_id')) return true
   return false
@@ -98,7 +114,7 @@ export function setTelegramIdFallback(id: number | null): void {
 
 export function authHeaders(): HeadersInit {
   const h: HeadersInit = { 'Content-Type': 'application/json' }
-  const initData = (window.Telegram?.WebApp?.initData ?? '').trim()
+  const initData = getRawInitData()
   if (initData) (h as Record<string, string>)['X-Telegram-Init-Data'] = initData
   const user = getTelegramUser()
   const queryId = new URLSearchParams(window.location.search).get('telegram_id')

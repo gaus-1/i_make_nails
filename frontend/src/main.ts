@@ -10,8 +10,29 @@ import { initMaster, renderMaster } from './render-master'
 const app = document.querySelector<HTMLDivElement>('#app')
 if (!app) throw new Error('Root element #app not found')
 
-if (typeof window !== 'undefined') {
-  window.Telegram?.WebApp?.ready?.()
+/** Даём Telegram время подставить initData/hash, затем вызываем ready и продолжаем. */
+function whenWebAppReady(cb: () => void): void {
+  if (typeof window === 'undefined') {
+    cb()
+    return
+  }
+  const run = (): void => {
+    window.Telegram?.WebApp?.ready?.()
+    cb()
+  }
+  if (window.Telegram?.WebApp) {
+    setTimeout(run, 0)
+    return
+  }
+  const deadline = Date.now() + 1500
+  const tick = (): void => {
+    if (window.Telegram?.WebApp || Date.now() > deadline) {
+      run()
+      return
+    }
+    setTimeout(tick, 50)
+  }
+  setTimeout(tick, 0)
 }
 
 function initAppView(): void {
@@ -101,8 +122,10 @@ function render(): void {
 
 initAppView()
 render()
-if (state.appView === 'client') {
-  loadMe(render)
-} else {
-  initMaster(render)
-}
+whenWebAppReady(() => {
+  if (state.appView === 'client') {
+    loadMe(render)
+  } else {
+    initMaster(render)
+  }
+})
