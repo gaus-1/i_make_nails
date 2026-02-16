@@ -430,7 +430,7 @@ function renderBooking(main: HTMLElement, scheduleRender: () => void): void {
           phone: null,
           slot_start_utc: state.selectedSlotUtc,
         })
-        state.success = 'Запись создана. Ждём вас!'
+        state.success = 'Запись создана, жду вас!'
         state.selectedSlotUtc = null
         state.slots = []
         state.selectedDate = null
@@ -485,10 +485,6 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
     scheduleRender()
     await loadMyAppointments(scheduleRender)
   })
-  tabs.appendChild(tabBook)
-  tabs.appendChild(tabMy)
-  main.appendChild(tabs)
-
   const messagesZone = document.createElement('div')
   messagesZone.className = 'shell__messages'
   messagesZone.setAttribute('aria-live', 'polite')
@@ -500,6 +496,10 @@ export function renderClient(shell: HTMLElement, scheduleRender: () => void): vo
     messagesZone.appendChild(ok)
   }
   main.appendChild(messagesZone)
+
+  tabs.appendChild(tabBook)
+  tabs.appendChild(tabMy)
+  main.appendChild(tabs)
 
   const panel = document.createElement('div')
   panel.className = 'shell__tabpanel'
