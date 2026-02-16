@@ -15,14 +15,26 @@ def _base_url() -> str:
     return f"https://{settings.webhook_domain.rstrip('/')}"
 
 
+# Параметр в URL Mini App, чтобы обойти кэш Telegram (при проблемах с кэшем — увеличить).
+_MINIAPP_CACHE_BUST = "v=2"
+
+
+def _miniapp_url(view_master: bool = False) -> str:
+    """URL для открытия Mini App с cache-bust, чтобы клиент запросил свежую версию."""
+    base = _base_url()
+    params = [_MINIAPP_CACHE_BUST]
+    if view_master:
+        params.append("view=master")
+    return f"{base}?{'&'.join(params)}"
+
+
 def _miniapp_keyboard(telegram_id: int | None) -> InlineKeyboardMarkup:
     """Inline-кнопки Web App: с них Telegram передаёт initData (reply keyboard — нет)."""
-    url = _base_url()
     rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
                 text="Открыть запись",
-                web_app=WebAppInfo(url=url),
+                web_app=WebAppInfo(url=_miniapp_url(view_master=False)),
             )
         ]
     ]
@@ -31,7 +43,7 @@ def _miniapp_keyboard(telegram_id: int | None) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="Панель мастера",
-                    web_app=WebAppInfo(url=f"{url}?view=master"),
+                    web_app=WebAppInfo(url=_miniapp_url(view_master=True)),
                 )
             ]
         )
