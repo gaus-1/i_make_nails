@@ -753,12 +753,32 @@ a.shell__pill {
   padding: 4px 0;
 }
 
-.shell__section--settings .shell__settings-row {
+.shell__settings-day-wrap {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.shell__settings-day-wrap:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.shell__section--settings .shell__settings-row-times {
   display: grid;
-  grid-template-columns: 2.2em minmax(0, 70px) auto minmax(0, 70px) minmax(0, 1fr) auto;
+  grid-template-columns: 2.2em minmax(0, 72px) auto minmax(0, 72px);
   gap: 4px 6px;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+}
+
+.shell__section--settings .shell__settings-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .shell__section--settings .shell__settings-day {
@@ -1169,16 +1189,29 @@ select:focus-visible {
     align-items: stretch;
   }
 
-  .shell__section--settings .shell__settings-row {
-    grid-template-columns: 2em minmax(0, 64px) auto minmax(0, 64px) minmax(0, 1fr) auto;
-    gap: 4px 5px;
+  .shell__section--settings .shell__settings-row-times {
+    grid-template-columns: 2em minmax(0, 68px) auto minmax(0, 68px);
+    margin-bottom: 5px;
   }
 
-  .shell__section--settings .shell__settings-off-btn {
-    font-size: 10px;
-    padding: 3px 6px;
-    min-height: 26px;
+  .shell__section--settings .shell__settings-row-actions {
+    justify-content: stretch;
   }
+
+  .shell__section--settings .shell__settings-row-actions .shell__pill {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+.shell__section--settings .shell__settings-off-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  min-height: 28px;
+}
+
+.shell__section--settings .shell__settings-row-actions .shell__pill {
+  flex-shrink: 0;
+}
 
   .shell__settings-row .shell__input {
     flex: 1 1 auto;

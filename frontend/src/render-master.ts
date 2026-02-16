@@ -733,8 +733,10 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
       const byDay = new Map<number, WorkScheduleItem>()
       for (const ws of s.work_schedule) byDay.set(ws.day_of_week, ws)
       for (let d = 0; d < 7; d++) {
-        const row = document.createElement('div')
-        row.className = 'shell__settings-row'
+        const wrap = document.createElement('div')
+        wrap.className = 'shell__settings-day-wrap'
+        const rowTimes = document.createElement('div')
+        rowTimes.className = 'shell__settings-row-times'
         const item = byDay.get(d)
         const startStr = item ? String(item.time_start).slice(0, 5) : ''
         const endStr = item ? String(item.time_end).slice(0, 5) : ''
@@ -753,14 +755,18 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         const dash = document.createElement('span')
         dash.className = 'shell__settings-dash'
         dash.textContent = '–'
-        row.appendChild(dayLabel)
-        row.appendChild(startInput)
-        row.appendChild(dash)
-        row.appendChild(endInput)
+        rowTimes.appendChild(dayLabel)
+        rowTimes.appendChild(startInput)
+        rowTimes.appendChild(dash)
+        rowTimes.appendChild(endInput)
+        wrap.appendChild(rowTimes)
+        const rowActions = document.createElement('div')
+        rowActions.className = 'shell__settings-row-actions'
         const offBtn = document.createElement('button')
         offBtn.type = 'button'
         offBtn.className = 'shell__pill shell__pill--small shell__settings-off-btn'
-        offBtn.textContent = isDayOff ? 'Выходной' : 'Сделать выходным'
+        offBtn.textContent = isDayOff ? 'Выходной' : 'Вых.'
+        offBtn.title = isDayOff ? 'Выходной' : 'Сделать выходным'
         offBtn.addEventListener('click', () => {
           startInput.value = '00:00'
           endInput.value = '00:00'
@@ -770,7 +776,7 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         saveBtn.className = 'shell__pill shell__pill--small'
         saveBtn.type = 'button'
         saveBtn.disabled = state.masterSavingDay === d
-        saveBtn.textContent = state.masterSavingDay === d ? 'Подождите…' : 'Сохранить'
+        saveBtn.textContent = state.masterSavingDay === d ? '…' : 'Сохранить'
         saveBtn.addEventListener('click', async () => {
           const rest = s.work_schedule.filter((w) => w.day_of_week !== d)
           const start = startInput.value.length === 5 ? startInput.value + ':00' : startInput.value
@@ -788,9 +794,10 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
             scheduleRender()
           }
         })
-        row.appendChild(offBtn)
-        row.appendChild(saveBtn)
-        wsBlock.appendChild(row)
+        rowActions.appendChild(offBtn)
+        rowActions.appendChild(saveBtn)
+        wrap.appendChild(rowActions)
+        wsBlock.appendChild(wrap)
       }
     }
     card.appendChild(wsBlock)
