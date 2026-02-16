@@ -782,6 +782,10 @@ a.shell__pill {
 }
 
 .shell__settings-day-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
   margin-bottom: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
@@ -793,12 +797,26 @@ a.shell__pill {
   border-bottom: none;
 }
 
-.shell__section--settings .shell__settings-row-times {
-  display: grid;
-  grid-template-columns: 2em minmax(0, 68px) auto minmax(0, 68px);
-  gap: 4px 6px;
+.shell__settings-day-first {
+  display: flex;
   align-items: center;
-  margin-bottom: 5px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.shell__section--settings .shell__settings-row-times {
+  display: flex;
+  align-items: center;
+  gap: 4px 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.shell__section--settings .shell__input--time {
+  width: 4.5em;
+  min-width: 4.5em;
+  max-width: 100%;
+  text-align: center;
 }
 
 .shell__section--settings .shell__settings-row-actions {
@@ -807,6 +825,7 @@ a.shell__pill {
   gap: 6px;
   align-items: center;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .shell__section--settings .shell__settings-day {
@@ -1137,8 +1156,8 @@ select:focus-visible {
     max-width: 100%;
   }
 
-  .shell__section--settings .shell__settings-row-times {
-    grid-template-columns: 1.8em minmax(0, 56px) auto minmax(0, 56px);
+  .shell__section--settings .shell__input--time {
+    min-width: 3.8em;
   }
 }
 
@@ -1221,29 +1240,39 @@ select:focus-visible {
     align-items: stretch;
   }
 
+  .shell__settings-day-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .shell__settings-day-first {
+    justify-content: space-between;
+  }
+
   .shell__section--settings .shell__settings-row-times {
-    grid-template-columns: 2em minmax(0, 68px) auto minmax(0, 68px);
-    margin-bottom: 5px;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .shell__section--settings .shell__input--time {
+    flex: 1 1 0;
+    min-width: 4em;
   }
 
   .shell__section--settings .shell__settings-row-actions {
-    justify-content: stretch;
+    justify-content: flex-end;
+  }
+
+  .shell__section--settings .shell__settings-off-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    min-height: 28px;
   }
 
   .shell__section--settings .shell__settings-row-actions .shell__pill {
-    flex: 1 1 0;
-    min-width: 0;
+    flex-shrink: 0;
   }
-
-.shell__section--settings .shell__settings-off-btn {
-  font-size: 11px;
-  padding: 4px 8px;
-  min-height: 28px;
-}
-
-.shell__section--settings .shell__settings-row-actions .shell__pill {
-  flex-shrink: 0;
-}
 
   .shell__settings-row .shell__input {
     flex: 1 1 auto;

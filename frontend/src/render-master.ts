@@ -316,6 +316,18 @@ function formatTimeInput(t: string): string {
   return `${part[0] ?? '09'}:${part[1] ?? '00'}`
 }
 
+/** Нормализует ввод к HH:MM (24ч без AM/PM). */
+function normalizeTimeInput(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length >= 2) {
+    const h = Math.min(23, parseInt(digits.slice(0, 2), 10))
+    const m = digits.length >= 4 ? Math.min(59, parseInt(digits.slice(2, 4), 10)) : 0
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+  if (digits.length === 1) return digits + ':'
+  return value.length >= 5 ? value.slice(0, 5) : value
+}
+
 async function patchClientBookingAllowed(
   clientId: number,
   bookingAllowed: boolean,
@@ -742,24 +754,43 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         const endStr = item ? String(item.time_end).slice(0, 5) : ''
         const isDayOff = !item || startStr === '00:00' || startStr === endStr
         const startInput = document.createElement('input')
-        startInput.type = 'time'
-        startInput.className = 'shell__input'
+        startInput.type = 'text'
+        startInput.inputMode = 'numeric'
+        startInput.autocomplete = 'off'
+        startInput.className = 'shell__input shell__input--time'
+        startInput.placeholder = '08:00'
+        startInput.maxLength = 5
         startInput.value = item && !isDayOff ? formatTimeInput(item.time_start) : '00:00'
+        startInput.addEventListener('blur', () => {
+          startInput.value = normalizeTimeInput(startInput.value)
+        })
+        startInput.addEventListener('input', () => {
+          const v = startInput.value.replace(/[^\d:]/g, '')
+          if (v.length === 2 && !v.includes(':')) startInput.value = v + ':'
+          else if (v.length <= 5) startInput.value = v
+        })
         const endInput = document.createElement('input')
-        endInput.type = 'time'
-        endInput.className = 'shell__input'
+        endInput.type = 'text'
+        endInput.inputMode = 'numeric'
+        endInput.autocomplete = 'off'
+        endInput.className = 'shell__input shell__input--time'
+        endInput.placeholder = '21:30'
+        endInput.maxLength = 5
         endInput.value = item && !isDayOff ? formatTimeInput(item.time_end) : '00:00'
+        endInput.addEventListener('blur', () => {
+          endInput.value = normalizeTimeInput(endInput.value)
+        })
+        endInput.addEventListener('input', () => {
+          const v = endInput.value.replace(/[^\d:]/g, '')
+          if (v.length === 2 && !v.includes(':')) endInput.value = v + ':'
+          else if (v.length <= 5) endInput.value = v
+        })
         const dayLabel = document.createElement('span')
         dayLabel.className = 'shell__settings-day'
         dayLabel.textContent = DAY_NAMES[d]
         const dash = document.createElement('span')
         dash.className = 'shell__settings-dash'
         dash.textContent = '–'
-        rowTimes.appendChild(dayLabel)
-        rowTimes.appendChild(startInput)
-        rowTimes.appendChild(dash)
-        rowTimes.appendChild(endInput)
-        wrap.appendChild(rowTimes)
         const rowActions = document.createElement('div')
         rowActions.className = 'shell__settings-row-actions'
         const offBtn = document.createElement('button')
@@ -779,9 +810,11 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         saveBtn.textContent = state.masterSavingDay === d ? '…' : 'Сохранить'
         saveBtn.addEventListener('click', async () => {
           const rest = s.work_schedule.filter((w) => w.day_of_week !== d)
-          const start = startInput.value.length === 5 ? startInput.value + ':00' : startInput.value
-          const end = endInput.value.length === 5 ? endInput.value + ':00' : endInput.value
-          const newWs = [...rest, { day_of_week: d, time_start: start, time_end: end }]
+          const start = normalizeTimeInput(startInput.value) || '00:00'
+          const end = normalizeTimeInput(endInput.value) || '00:00'
+          const startVal = start.length === 5 ? start + ':00' : start
+          const endVal = end.length === 5 ? end + ':00' : end
+          const newWs = [...rest, { day_of_week: d, time_start: startVal, time_end: endVal }]
           state.masterSavingDay = d
           scheduleRender()
           try {
@@ -796,7 +829,15 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         })
         rowActions.appendChild(offBtn)
         rowActions.appendChild(saveBtn)
-        wrap.appendChild(rowActions)
+        const firstLine = document.createElement('div')
+        firstLine.className = 'shell__settings-day-first'
+        firstLine.appendChild(dayLabel)
+        firstLine.appendChild(rowActions)
+        rowTimes.appendChild(startInput)
+        rowTimes.appendChild(dash)
+        rowTimes.appendChild(endInput)
+        wrap.appendChild(firstLine)
+        wrap.appendChild(rowTimes)
         wsBlock.appendChild(wrap)
       }
     }
