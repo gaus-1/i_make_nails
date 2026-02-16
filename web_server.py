@@ -161,7 +161,10 @@ async def create_app() -> web.Application:
         index_path = static_dir / "index.html"
 
         async def index(_request: web.Request) -> web.StreamResponse:
-            return web.FileResponse(index_path)
+            resp = web.FileResponse(index_path)
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            resp.headers["Pragma"] = "no-cache"
+            return resp
 
         app.router.add_get("/", index)
         app.router.add_static("/assets", str(static_dir / "assets"))
