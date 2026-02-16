@@ -748,19 +748,19 @@ a.shell__pill {
 
 .shell__main--master .shell__tabpanel .shell__section--settings {
   margin-top: 8px;
-  padding-top: 6px;
-  padding-bottom: 8px;
+  padding: 10px 14px 12px;
   max-width: 420px;
+  min-width: 0;
 }
 
 .shell__section--settings .shell__section-title {
   font-size: 13px;
-  margin-bottom: 6px;
+  margin: 0 0 8px;
 }
 
 .shell__section--settings .shell__form-block,
 .shell__section--settings .shell__settings-ws-title {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .shell__section--settings .shell__label-row {
@@ -769,12 +769,13 @@ a.shell__pill {
 
 .shell__section--settings .shell__settings-ws-toggle {
   font-size: 12px;
-  padding: 4px 0;
+  padding: 6px 0;
+  margin-top: 4px;
 }
 
 .shell__settings-day-wrap {
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -1126,6 +1127,10 @@ select:focus-visible {
 
   .shell__section.master-schedule .shell__date-input {
     max-width: 100%;
+  }
+
+  .shell__section--settings .shell__settings-row-times {
+    grid-template-columns: 1.8em minmax(0, 56px) auto minmax(0, 56px);
   }
 }
 

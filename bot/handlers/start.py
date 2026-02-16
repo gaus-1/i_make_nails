@@ -38,11 +38,27 @@ def _miniapp_keyboard(telegram_id: int | None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+# Ширина inline-клавиатуры в Telegram привязана к ширине текста сообщения.
+# Короткий текст — узкий пузырь и узкие кнопки. Паддинг до ~29 символов растягивает клавиатуру.
+_START_TEXT_PAD_TO = 29
+_ZERO_WIDTH_JOINER_HTML = "&#x200D;"
+
+
+def _start_message_text() -> str:
+    """Текст «Нажмите:» по центру широкого пузыря; паддинг растягивает клавиатуру на всю ширину."""
+    base = "Нажмите:"
+    pad_total = max(0, _START_TEXT_PAD_TO - len(base))
+    pad_left = pad_total // 2
+    pad_right = pad_total - pad_left
+    return " " * pad_left + base + " " * pad_right + _ZERO_WIDTH_JOINER_HTML
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     """Обработчик /start: приветствие и кнопка записи; у мастера дополнительно «Панель мастера»."""
     user_id = message.from_user.id if message.from_user else None
     await message.answer(
-        "Нажмите:",
+        _start_message_text(),
         reply_markup=_miniapp_keyboard(user_id),
+        parse_mode="HTML",
     )
