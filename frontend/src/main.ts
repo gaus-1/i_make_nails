@@ -143,6 +143,12 @@ function render(): void {
     renderClient(shell, render)
   }
 
+  const v = new URLSearchParams(window.location.search).get('v') ?? '?'
+  const footer = document.createElement('div')
+  footer.className = 'shell__version'
+  footer.textContent = `Загружено: v${v}`
+  shell.appendChild(footer)
+
   app.appendChild(shell)
 }
 

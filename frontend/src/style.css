@@ -101,6 +101,14 @@ body {
   min-width: 0;
 }
 
+.shell__version {
+  margin-top: auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  text-align: center;
+}
+
 .shell__pill {
   display: inline-flex;
   align-items: center;
