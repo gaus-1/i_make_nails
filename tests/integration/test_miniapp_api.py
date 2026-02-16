@@ -625,6 +625,12 @@ async def test_blocked_slots_get_post_delete(
     db.add(master)
     db.commit()
 
+    # Дата в будущем, чтобы не сработала проверка «не блокировать прошлое»
+    block_date = date.today() + timedelta(days=14)
+    block_str = block_date.isoformat()
+    range_start = block_date - timedelta(days=7)
+    range_end = block_date + timedelta(days=7)
+
     app = create_test_app()
     server = TestServer(app)
     client = TestClient(server)
@@ -633,7 +639,7 @@ async def test_blocked_slots_get_post_delete(
     try:
         resp = await client.get(
             "/api/miniapp/master/blocked-slots",
-            params={"date_from": "2026-02-01", "date_to": "2026-02-28"},
+            params={"date_from": range_start.isoformat(), "date_to": range_end.isoformat()},
             headers={"X-Telegram-Id": "111"},
         )
         assert resp.status == 200
@@ -643,18 +649,18 @@ async def test_blocked_slots_get_post_delete(
         resp = await client.post(
             "/api/miniapp/master/blocked-slots",
             headers={"X-Telegram-Id": "111", "Content-Type": "application/json"},
-            json={"date_start": "2026-02-15", "reason": "Выходной"},
+            json={"date_start": block_str, "reason": "Выходной"},
         )
         assert resp.status == 200
         created = await resp.json()
         bid = created["id"]
-        assert created["date_start"] == "2026-02-15"
-        assert created["date_end"] == "2026-02-15"
+        assert created["date_start"] == block_str
+        assert created["date_end"] == block_str
         assert created["reason"] == "Выходной"
 
         resp = await client.get(
             "/api/miniapp/master/blocked-slots",
-            params={"date_from": "2026-02-01", "date_to": "2026-02-28"},
+            params={"date_from": range_start.isoformat(), "date_to": range_end.isoformat()},
             headers={"X-Telegram-Id": "111"},
         )
         assert resp.status == 200

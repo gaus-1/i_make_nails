@@ -130,8 +130,8 @@ def unauthorized(message: str, code: str = "invalid_init_data") -> NoReturn:
     raise _json_http_error(web.HTTPUnauthorized, message=message, code=code)
 
 
-def _parse_id_list(raw: str) -> set[int]:
-    """Парсит список целых id (запятая/пробел), убирает кавычки из значений (Railway ENV)."""
+def _parse_id_list(raw: str) -> frozenset[int]:
+    """Парсит список целых id (запятая/пробел), убирает кавычки из значений (Railway ENV). O(1) lookup."""
     result: set[int] = set()
     for part in raw.replace(" ", "").split(","):
         part = part.strip().strip("\"'")
@@ -141,7 +141,7 @@ def _parse_id_list(raw: str) -> set[int]:
             result.add(int(part))
         except ValueError:
             continue
-    return result
+    return frozenset(result)
 
 
 def resolve_telegram_role(telegram_id: int) -> str | None:
@@ -160,6 +160,13 @@ def is_master_telegram_id(telegram_id: int) -> bool:
     """Входит ли id в MASTER_TELEGRAM_IDS (кнопка «Панель мастера» только у мастера)."""
     master_ids = _parse_id_list(settings.master_telegram_ids)
     return telegram_id in master_ids
+
+
+def is_owner_telegram_id(telegram_id: int) -> bool:
+    """Входит ли id в OWNER_TELEGRAM_IDS (кнопка «Как клиент» в панели мастера)."""
+    if not settings.owner_telegram_ids.strip():
+        return False
+    return telegram_id in _parse_id_list(settings.owner_telegram_ids)
 
 
 def require_master(db: Session, request: web.Request) -> int:

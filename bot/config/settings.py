@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     master_telegram_ids: str = Field(..., alias="MASTER_TELEGRAM_IDS")
     admin_telegram_ids: str = Field(..., alias="ADMIN_TELEGRAM_IDS")
+    owner_telegram_ids: str = Field("", alias="OWNER_TELEGRAM_IDS")
 
     timezone: str = Field("Europe/Moscow", alias="TIMEZONE")
     webhook_domain: str = Field(..., alias="WEBHOOK_DOMAIN")

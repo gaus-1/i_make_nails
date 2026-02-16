@@ -12,6 +12,7 @@ class MeOut(BaseModel):
 
     telegram_id: int
     role: str = Field(..., description="'admin' | 'master' | 'client'")
+    is_owner: bool = Field(False, description="Показывать кнопку «Как клиент» в панели мастера.")
 
 
 class SlotOut(BaseModel):

@@ -3,7 +3,7 @@
 import './style.css'
 
 import { API, apiGet, appendTelegramIdToUrl, getTelegramIdForRequest, getTelegramUser, setTelegramIdFallback } from './api'
-import { state, OWNER_TELEGRAM_ID } from './state'
+import { state } from './state'
 import { renderClient } from './render-client'
 import { initMaster, renderMaster } from './render-master'
 
@@ -71,14 +71,16 @@ function initAppView(): void {
 
 export async function loadMe(scheduleRender: () => void): Promise<void> {
   try {
-    const data = await apiGet<{ telegram_id: number; role: string }>(
+    const data = await apiGet<{ telegram_id: number; role: string; is_owner: boolean }>(
       appendTelegramIdToUrl(API.me, getTelegramIdForRequest(state.telegramId))
     )
     state.userRole = data.role
+    state.userIsOwner = data.is_owner ?? false
     state.telegramId = data.telegram_id
     setTelegramIdFallback(data.telegram_id)
   } catch {
     state.userRole = null
+    state.userIsOwner = false
     state.telegramId = null
     setTelegramIdFallback(null)
   }
@@ -116,7 +118,7 @@ function render(): void {
       masterLink.addEventListener('click', switchToMasterView)
       header.appendChild(masterLink)
     }
-  } else if (state.telegramId !== null && state.telegramId === OWNER_TELEGRAM_ID) {
+  } else if (state.userIsOwner) {
     const clientLink = document.createElement('button')
     clientLink.className = 'shell__pill'
     clientLink.type = 'button'

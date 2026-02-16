@@ -887,15 +887,17 @@ export function renderMaster(shell: HTMLElement, scheduleRender: () => void): vo
 export async function initMaster(scheduleRender: () => void): Promise<void> {
   const uid = getTelegramIdForRequest(state.telegramId)
   try {
-    const me = await apiGet<{ telegram_id: number; role: string }>(
+    const me = await apiGet<{ telegram_id: number; role: string; is_owner: boolean }>(
       appendTelegramIdToUrl(API.me, uid)
     )
     state.telegramId = me.telegram_id
     state.userRole = me.role
+    state.userIsOwner = me.is_owner ?? false
     setTelegramIdFallback(me.telegram_id)
   } catch {
     state.telegramId = null
     state.userRole = null
+    state.userIsOwner = false
     setTelegramIdFallback(null)
   }
   scheduleRender()

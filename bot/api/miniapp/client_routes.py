@@ -14,6 +14,7 @@ from bot.api.deps import (
     forbidden,
     get_db,
     get_telegram_id_from_request,
+    is_owner_telegram_id,
     not_found,
     parse_date,
     parse_int,
@@ -37,11 +38,12 @@ routes = web.RouteTableDef()
 
 @routes.get("/api/miniapp/me")
 async def get_me(request: web.Request) -> web.Response:
-    """Текущий пользователь: telegram_id и роль для переключателя в UI."""
+    """Текущий пользователь: telegram_id, роль и is_owner для переключателя в UI."""
     telegram_id = get_telegram_id_from_request(request)
     role_raw = resolve_telegram_role(telegram_id)
     role = (role_raw or "client").lower()
-    body = MeOut(telegram_id=telegram_id, role=role)
+    is_owner = is_owner_telegram_id(telegram_id)
+    body = MeOut(telegram_id=telegram_id, role=role, is_owner=is_owner)
     return web.json_response(body.model_dump(mode="json"))
 
 
