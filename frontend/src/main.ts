@@ -52,6 +52,13 @@ function whenWebAppReady(cb: () => void): void {
 
 function initAppView(): void {
   const params = new URLSearchParams(window.location.search)
+  // Опечатка v=2=2 в URL — нормализуем до v=2 и обновляем адресную строку.
+  if (params.get('v') === '2=2') {
+    params.set('v', '2')
+    const newSearch = params.toString()
+    const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '')
+    window.history.replaceState(null, '', newUrl)
+  }
   state.appView = params.get('view') === 'master' ? 'master' : 'client'
   if (state.appView === 'master') {
     const tid = params.get('telegram_id')
@@ -89,6 +96,7 @@ export async function loadMe(scheduleRender: () => void): Promise<void> {
 
 function switchToMasterView(): void {
   const url = new URL(window.location.href)
+  if (url.searchParams.get('v') === '2=2') url.searchParams.set('v', '2')
   url.searchParams.set('view', 'master')
   const user = getTelegramUser()
   if (user) url.searchParams.set('telegram_id', String(user.id))
@@ -97,6 +105,7 @@ function switchToMasterView(): void {
 
 function switchToClientView(): void {
   const url = new URL(window.location.href)
+  if (url.searchParams.get('v') === '2=2') url.searchParams.set('v', '2')
   url.searchParams.delete('view')
   window.location.href = url.toString()
 }
