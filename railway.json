@@ -1,5 +1,5 @@
 {
-  "build": { "builder": "NIXPACKS" },
+  "build": { "builder": "DOCKER" },
   "deploy": {
     "numReplicas": 1,
     "releaseCommand": "alembic upgrade head",
