@@ -19,6 +19,7 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 } } },
     { name: 'tablet', use: { ...devices['Desktop Chrome'], viewport: { width: 768, height: 1024 } } },
     { name: 'mobile', use: { ...devices['Pixel 5'], viewport: { width: 393, height: 851 } } },
+    { name: 'mobile-360', use: { ...devices['Desktop Chrome'], viewport: { width: 360, height: 780 } } },
     { name: 'mobile-narrow', use: { ...devices['Desktop Chrome'], viewport: { width: 320, height: 568 } } },
   ],
   webServer: process.env.E2E_BASE_URL
