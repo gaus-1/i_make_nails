@@ -16,7 +16,7 @@ def _base_url() -> str:
 
 
 # Параметр в URL Mini App, чтобы обойти кэш Telegram (при проблемах с кэшем — увеличить).
-_MINIAPP_CACHE_BUST = "v=2"
+_MINIAPP_CACHE_BUST = "v=3"
 
 
 def _miniapp_url(view_master: bool = False) -> str:
