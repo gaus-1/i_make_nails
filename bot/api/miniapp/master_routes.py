@@ -230,6 +230,7 @@ async def patch_master_client(request: web.Request) -> web.Response:
         id=client.id,
         name=client.name,
         phone=client.phone,
+        telegram_id=client.telegram_id,
         booking_allowed=client.booking_allowed,
         future_appointments_count=future_count,
     )

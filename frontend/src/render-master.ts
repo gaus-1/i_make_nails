@@ -321,6 +321,9 @@ async function patchClientBookingAllowed(
   bookingAllowed: boolean,
   scheduleRender: () => void
 ): Promise<void> {
+  if (state.masterClientPatchingId !== null) return
+  state.masterClientPatchingId = clientId
+  scheduleRender()
   const uid = getTelegramIdForRequest(state.telegramId)
   try {
     const updated = await apiPatch<MasterClient>(
@@ -329,10 +332,13 @@ async function patchClientBookingAllowed(
     )
     const idx = state.masterClients.findIndex((c) => c.id === clientId)
     if (idx >= 0) state.masterClients[idx] = updated
-  } catch {
-    /* без сообщения пользователю */
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Не удалось изменить доступ к записи.'
+    window.Telegram?.WebApp?.showAlert?.(msg)
+  } finally {
+    state.masterClientPatchingId = null
+    scheduleRender()
   }
-  scheduleRender()
 }
 
 async function patchMasterSettings(
@@ -608,9 +614,10 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
     p.textContent = 'Загрузка…'
     card.appendChild(p)
   } else {
-    const list = document.createElement('div')
-    list.className = 'shell__appointments-list shell__clients-list'
-    for (const c of state.masterClients) {
+    const allowed = state.masterClients.filter((c) => c.booking_allowed)
+    const forbidden = state.masterClients.filter((c) => !c.booking_allowed)
+
+    const renderClientItem = (c: MasterClient) => {
       const item = document.createElement('div')
       item.className = 'shell__appointment-item shell__appointment-item--with-actions'
       const name = document.createElement('div')
@@ -634,16 +641,39 @@ function renderClientsTab(main: HTMLElement, scheduleRender: () => void): void {
       }
       const bookingBtn = document.createElement('button')
       bookingBtn.type = 'button'
+      const isPatching = state.masterClientPatchingId === c.id
+      bookingBtn.disabled = isPatching
       bookingBtn.className = c.booking_allowed ? 'shell__pill shell__pill--danger-outline' : 'shell__pill shell__pill--small'
-      bookingBtn.textContent = c.booking_allowed ? 'Запретить запись' : 'Разрешить запись'
+      bookingBtn.textContent = isPatching
+        ? 'Подождите…'
+        : c.booking_allowed
+          ? 'Запретить запись'
+          : 'Разрешить запись'
       bookingBtn.addEventListener('click', async () => {
         await patchClientBookingAllowed(c.id, !c.booking_allowed, scheduleRender)
       })
       actions.appendChild(bookingBtn)
       item.appendChild(actions)
-      list.appendChild(item)
+      return item
     }
-    card.appendChild(list)
+
+    const list = document.createElement('div')
+    list.className = 'shell__appointments-list shell__clients-list'
+    for (const c of allowed) list.appendChild(renderClientItem(c))
+
+    if (forbidden.length > 0) {
+      const blockTitle = document.createElement('h3')
+      blockTitle.className = 'shell__section-caption shell__clients-blocked-title'
+      blockTitle.textContent = 'Запись запрещена'
+      card.appendChild(list)
+      card.appendChild(blockTitle)
+      const forbiddenList = document.createElement('div')
+      forbiddenList.className = 'shell__appointments-list shell__clients-list shell__clients-list--blocked'
+      for (const c of forbidden) forbiddenList.appendChild(renderClientItem(c))
+      card.appendChild(forbiddenList)
+    } else {
+      card.appendChild(list)
+    }
   }
   main.appendChild(card)
 }
@@ -708,9 +738,15 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         endInput.type = 'time'
         endInput.className = 'shell__input'
         endInput.value = item ? formatTimeInput(item.time_end) : '21:30'
-        row.appendChild(document.createTextNode(DAY_NAMES[d] + ' '))
+        const dayLabel = document.createElement('span')
+        dayLabel.className = 'shell__settings-day'
+        dayLabel.textContent = DAY_NAMES[d]
+        const dash = document.createElement('span')
+        dash.className = 'shell__settings-dash'
+        dash.textContent = '–'
+        row.appendChild(dayLabel)
         row.appendChild(startInput)
-        row.appendChild(document.createTextNode(' – '))
+        row.appendChild(dash)
         row.appendChild(endInput)
         const saveBtn = document.createElement('button')
         saveBtn.className = 'shell__pill shell__pill--small'

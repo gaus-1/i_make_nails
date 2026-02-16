@@ -81,6 +81,8 @@ export const state = {
   masterRescheduleAppointmentId: null as number | null,
   masterRescheduleDate: null as string | null,
   masterRescheduleSlots: [] as Slot[],
+  /** id клиента, для которого идёт запрос запрета/разрешения записи (кнопка в ожидании). */
+  masterClientPatchingId: null as number | null,
   /** Свёрнут ли блок «Рабочие часы» в настройках (по умолчанию развёрнут). */
   masterSettingsWorkScheduleCollapsed: false,
 }

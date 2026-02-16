@@ -43,6 +43,6 @@ async def cmd_start(message: Message) -> None:
     """Обработчик /start: приветствие и кнопка записи; у мастера дополнительно «Панель мастера»."""
     user_id = message.from_user.id if message.from_user else None
     await message.answer(
-        "Выберите действие:",
+        "Нажмите",
         reply_markup=_miniapp_keyboard(user_id),
     )
