@@ -24,7 +24,7 @@ test.describe('Клиент', () => {
   test('запись: календарь → дата → слоты', async ({ page }) => {
     await page.getByRole('tab', { name: 'Записаться' }).click()
     await expect(page.getByRole('heading', { name: 'Дата и время' })).toBeVisible({ timeout: 5000 })
-    const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other)').first()
+    const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other):not(.shell__cal-cell--past)').first()
     await calCell.waitFor({ state: 'visible', timeout: 3000 })
     await calCell.click()
     const slot = page.locator('.slot').first()
@@ -80,7 +80,7 @@ test.describe('Клиент', () => {
 
   test('подтвердить запись: кнопка активна после выбора даты и слота', async ({ page }) => {
     await page.getByRole('tab', { name: 'Записаться' }).click()
-    const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other)').first()
+    const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other):not(.shell__cal-cell--past)').first()
     await calCell.waitFor({ state: 'visible', timeout: 5000 })
     await calCell.click()
     const slot = page.locator('.slot').first()
@@ -94,9 +94,9 @@ test.describe('Клиент', () => {
   test('полный флоу: дата → слот → Подтвердить запись → успех или запись в Мои записи', async ({ page }) => {
     await page.getByRole('tab', { name: 'Записаться' }).click()
     await page.getByRole('button', { name: 'Следующий месяц' }).click()
-    const calCell = page.locator('.shell__cal-cell:not(.shell__cal-cell--other)').first()
-    await calCell.waitFor({ state: 'visible', timeout: 5000 })
-    await calCell.click()
+    const clickableCells = page.locator('.shell__cal-cell:not(.shell__cal-cell--other):not(.shell__cal-cell--past)')
+    await clickableCells.first().waitFor({ state: 'visible', timeout: 5000 })
+    await clickableCells.nth(1).click()
     const slot = page.locator('.slot').first()
     await slot.waitFor({ state: 'visible', timeout: 10000 })
     await slot.click()
