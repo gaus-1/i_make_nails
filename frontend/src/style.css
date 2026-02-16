@@ -755,8 +755,8 @@ a.shell__pill {
 
 .shell__section--settings .shell__settings-row {
   display: grid;
-  grid-template-columns: 2.2em 1fr auto 1fr auto;
-  gap: 6px 8px;
+  grid-template-columns: 2.2em minmax(0, 70px) auto minmax(0, 70px) minmax(0, 1fr) auto;
+  gap: 4px 6px;
   align-items: center;
   margin-bottom: 5px;
 }
@@ -774,10 +774,12 @@ a.shell__pill {
 }
 
 .shell__section--settings .shell__input {
-  padding: 4px 6px;
+  padding: 3px 4px;
   font-size: 11px;
-  min-height: 28px;
-  border-radius: 8px;
+  min-height: 26px;
+  max-width: 100%;
+  border-radius: 6px;
+  box-sizing: border-box;
 }
 
 .shell__main--master .shell__period-tab {
@@ -1168,8 +1170,14 @@ select:focus-visible {
   }
 
   .shell__section--settings .shell__settings-row {
-    grid-template-columns: 2em 1fr auto 1fr auto;
-    gap: 4px 6px;
+    grid-template-columns: 2em minmax(0, 64px) auto minmax(0, 64px) minmax(0, 1fr) auto;
+    gap: 4px 5px;
+  }
+
+  .shell__section--settings .shell__settings-off-btn {
+    font-size: 10px;
+    padding: 3px 6px;
+    min-height: 26px;
   }
 
   .shell__settings-row .shell__input {

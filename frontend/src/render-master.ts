@@ -707,7 +707,13 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
     })
     bookingLabel.appendChild(bookingCb)
     bookingLabel.append('Онлайн-запись включена')
+    const bookingHint = document.createElement('span')
+    bookingHint.className = 'shell__section-caption'
+    bookingHint.style.display = 'block'
+    bookingHint.style.marginTop = '2px'
+    bookingHint.textContent = 'Снять — клиенты не увидят свободные слоты.'
     bookingWrap.appendChild(bookingLabel)
+    bookingWrap.appendChild(bookingHint)
     card.appendChild(bookingWrap)
 
     const wsHeader = document.createElement('button')
@@ -730,14 +736,17 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         const row = document.createElement('div')
         row.className = 'shell__settings-row'
         const item = byDay.get(d)
+        const startStr = item ? String(item.time_start).slice(0, 5) : ''
+        const endStr = item ? String(item.time_end).slice(0, 5) : ''
+        const isDayOff = !item || startStr === '00:00' || startStr === endStr
         const startInput = document.createElement('input')
         startInput.type = 'time'
         startInput.className = 'shell__input'
-        startInput.value = item ? formatTimeInput(item.time_start) : '08:00'
+        startInput.value = item && !isDayOff ? formatTimeInput(item.time_start) : '00:00'
         const endInput = document.createElement('input')
         endInput.type = 'time'
         endInput.className = 'shell__input'
-        endInput.value = item ? formatTimeInput(item.time_end) : '21:30'
+        endInput.value = item && !isDayOff ? formatTimeInput(item.time_end) : '00:00'
         const dayLabel = document.createElement('span')
         dayLabel.className = 'shell__settings-day'
         dayLabel.textContent = DAY_NAMES[d]
@@ -748,6 +757,15 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         row.appendChild(startInput)
         row.appendChild(dash)
         row.appendChild(endInput)
+        const offBtn = document.createElement('button')
+        offBtn.type = 'button'
+        offBtn.className = 'shell__pill shell__pill--small shell__settings-off-btn'
+        offBtn.textContent = isDayOff ? 'Выходной' : 'Сделать выходным'
+        offBtn.addEventListener('click', () => {
+          startInput.value = '00:00'
+          endInput.value = '00:00'
+          scheduleRender()
+        })
         const saveBtn = document.createElement('button')
         saveBtn.className = 'shell__pill shell__pill--small'
         saveBtn.type = 'button'
@@ -770,6 +788,7 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
             scheduleRender()
           }
         })
+        row.appendChild(offBtn)
         row.appendChild(saveBtn)
         wsBlock.appendChild(row)
       }
