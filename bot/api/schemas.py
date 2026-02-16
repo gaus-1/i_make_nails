@@ -127,10 +127,10 @@ class WorkScheduleItemOut(BaseModel):
 
 
 class MasterSettingsOut(BaseModel):
-    """Master settings for mini-app (booking on/off, timezone, work schedule)."""
+    """Master settings for mini-app (booking on/off, work schedule). timezone только в ответе, не редактируется."""
 
     booking_enabled: bool
-    timezone: str
+    timezone: str  # только для отображения/логики, настройка убрана
     slot_duration_minutes: int = 90
     work_schedule: list[WorkScheduleItemOut]
 
@@ -147,7 +147,6 @@ class MasterSettingsPatchIn(BaseModel):
     """Payload for updating master settings."""
 
     booking_enabled: bool | None = None
-    timezone: str | None = None
     work_schedule: list[WorkScheduleItemIn] | None = None
 
 

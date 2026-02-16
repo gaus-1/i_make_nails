@@ -281,8 +281,6 @@ async def patch_master_settings(request: web.Request) -> web.Response:
 
         if data.booking_enabled is not None:
             master.booking_enabled = data.booking_enabled
-        if data.timezone is not None:
-            master.timezone = data.timezone
         if data.work_schedule is not None:
             existing_ws = (
                 db.execute(select(WorkSchedule).where(WorkSchedule.master_id == master_id))

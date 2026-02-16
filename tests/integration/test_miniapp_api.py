@@ -483,7 +483,7 @@ async def test_master_clients_get_and_patch(
 async def test_master_settings_get_and_patch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Мастер получает настройки и обновляет booking_enabled и timezone."""
+    """Мастер получает настройки и обновляет booking_enabled (timezone не редактируется)."""
     db = setup_in_memory_session(monkeypatch)
     monkeypatch.setattr(settings, "master_telegram_ids", "111")
     monkeypatch.setattr(settings, "admin_telegram_ids", "222")
@@ -515,14 +515,6 @@ async def test_master_settings_get_and_patch(
         )
         assert resp.status == 200
         assert (await resp.json())["booking_enabled"] is False
-
-        resp = await client.patch(
-            "/api/miniapp/master/settings",
-            headers={"X-Telegram-Id": "111", "Content-Type": "application/json"},
-            json={"timezone": "Asia/Yekaterinburg"},
-        )
-        assert resp.status == 200
-        assert (await resp.json())["timezone"] == "Asia/Yekaterinburg"
     finally:
         await client.close()
 

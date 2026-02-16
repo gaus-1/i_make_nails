@@ -354,7 +354,7 @@ async function patchClientBookingAllowed(
 }
 
 async function patchMasterSettings(
-  payload: { booking_enabled?: boolean; timezone?: string; work_schedule?: { day_of_week: number; time_start: string; time_end: string }[] },
+  payload: { booking_enabled?: boolean; work_schedule?: { day_of_week: number; time_start: string; time_end: string }[] },
   scheduleRender: () => void
 ): Promise<void> {
   const uid = getTelegramIdForRequest(state.telegramId)
