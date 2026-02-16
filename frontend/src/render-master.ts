@@ -793,16 +793,20 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
         dash.textContent = '–'
         const rowActions = document.createElement('div')
         rowActions.className = 'shell__settings-row-actions'
-        const offBtn = document.createElement('button')
-        offBtn.type = 'button'
-        offBtn.className = 'shell__pill shell__pill--small shell__settings-off-btn'
-        offBtn.textContent = isDayOff ? 'Выходной' : 'Вых.'
-        offBtn.title = isDayOff ? 'Выходной' : 'Сделать выходным'
-        offBtn.addEventListener('click', () => {
-          startInput.value = '00:00'
-          endInput.value = '00:00'
-          scheduleRender()
-        })
+        const isSunday = d === 6
+        if (isSunday) {
+          const offBtn = document.createElement('button')
+          offBtn.type = 'button'
+          offBtn.className = 'shell__pill shell__pill--small shell__settings-off-btn'
+          offBtn.textContent = isDayOff ? 'Выходной' : 'Вых.'
+          offBtn.title = isDayOff ? 'Выходной' : 'Сделать выходным'
+          offBtn.addEventListener('click', () => {
+            startInput.value = '00:00'
+            endInput.value = '00:00'
+            scheduleRender()
+          })
+          rowActions.appendChild(offBtn)
+        }
         const saveBtn = document.createElement('button')
         saveBtn.className = 'shell__pill shell__pill--small'
         saveBtn.type = 'button'
@@ -827,7 +831,6 @@ function renderSettingsTab(main: HTMLElement, scheduleRender: () => void): void 
             scheduleRender()
           }
         })
-        rowActions.appendChild(offBtn)
         rowActions.appendChild(saveBtn)
         const firstLine = document.createElement('div')
         firstLine.className = 'shell__settings-day-first'
