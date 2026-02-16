@@ -95,6 +95,12 @@ body {
   gap: 5px;
 }
 
+/* Кнопки «Панель мастера» / «Как клиент» в шапке — растягивать по ширине (раньше были узкими) */
+.shell__header > .shell__pill {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .shell__pill {
   display: inline-flex;
   align-items: center;
